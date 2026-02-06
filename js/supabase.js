@@ -11,16 +11,20 @@
 const SUPABASE_URL = 'SEU_SUPABASE_URL_AQUI'; // Ex: https://xxxxx.supabase.co
 const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY_AQUI';
 
-// Inicializar cliente Supabase
-let supabaseClient;
-try {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-} catch (error) {
-    console.error('Erro ao criar cliente Supabase:', error);
-}
-
-// Usar alias para evitar conflito de nomes
-const supabase = supabaseClient;
+// Criar cliente Supabase de forma segura
+const supabase = (function() {
+    if (typeof window.supabase === 'undefined') {
+        console.error('❌ Biblioteca Supabase não carregada. Verifique a conexão.');
+        return null;
+    }
+    
+    try {
+        return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (error) {
+        console.error('❌ Erro ao criar cliente Supabase:', error);
+        return null;
+    }
+})();
 
 // Verificar conexão
 async function verificarConexao() {

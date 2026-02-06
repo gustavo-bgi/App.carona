@@ -162,9 +162,11 @@ async function carregarDadosIniciais() {
         // Carregar viagens
         await carregarViagens();
         
+        console.log('✅ Dados iniciais carregados com sucesso');
+        
     } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        mostrarNotificacao('Erro ao carregar dados', 'error');
+        console.error('❌ Erro ao carregar dados:', error);
+        mostrarNotificacao('Erro ao carregar dados: ' + error.message, 'error');
     } finally {
         esconderLoading();
     }

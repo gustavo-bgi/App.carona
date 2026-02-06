@@ -134,21 +134,35 @@ function debounce(func, wait) {
 
 // Mostrar/Esconder loading
 function mostrarLoading() {
-    document.getElementById('loadingOverlay').classList.remove('hidden');
+    const loading = document.getElementById('loadingOverlay');
+    if (loading) {
+        loading.classList.remove('hidden');
+    }
 }
 
 function esconderLoading() {
-    document.getElementById('loadingOverlay').classList.add('hidden');
+    const loading = document.getElementById('loadingOverlay');
+    if (loading) {
+        loading.classList.add('hidden');
+    }
 }
 
 // Mostrar modal
 function mostrarModal(modalId) {
-    document.getElementById(modalId).classList.remove('hidden');
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('hidden');
+    } else {
+        console.error('Modal não encontrado:', modalId);
+    }
 }
 
 // Esconder modal
 function esconderModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+    }
 }
 
 // Mostrar toast/notificação
