@@ -8,14 +8,34 @@
 // 3. Vá em Settings > API
 // 4. Copie a URL e a anon key
 
-const SUPABASE_URL = 'https://mlftdhglevxgpfeyjtnl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZnRkaGdsZXZ4Z3BmZXlqdG5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzNTMyNjgsImV4cCI6MjA4NTkyOTI2OH0.SmL5tUpE_zlqzyPlcQqTys7CTzhNnJGjRfWLQqN75lA';
+const SUPABASE_URL = 'SEU_SUPABASE_URL_AQUI'; // Ex: https://xxxxx.supabase.co
+const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY_AQUI';
 
 // Inicializar cliente Supabase
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabaseClient;
+try {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (error) {
+    console.error('Erro ao criar cliente Supabase:', error);
+}
+
+// Usar alias para evitar conflito de nomes
+const supabase = supabaseClient;
 
 // Verificar conexão
 async function verificarConexao() {
+    // Verificar se credenciais foram configuradas
+    if (SUPABASE_URL === 'SEU_SUPABASE_URL_AQUI' || SUPABASE_ANON_KEY === 'SUA_SUPABASE_ANON_KEY_AQUI') {
+        console.error('❌ Credenciais do Supabase não configuradas');
+        return false;
+    }
+    
+    // Verificar se o cliente foi criado
+    if (!supabase) {
+        console.error('❌ Cliente Supabase não foi criado');
+        return false;
+    }
+    
     try {
         const { data, error } = await supabase.from('pessoas').select('count');
         if (error) throw error;
@@ -24,20 +44,21 @@ async function verificarConexao() {
     } catch (error) {
         console.error('❌ Erro ao conectar ao Supabase:', error);
         
-        // Mostrar alerta para o usuário
-        if (SUPABASE_URL === 'SEU_SUPABASE_URL_AQUI') {
-            alert(
-                '⚠️ CONFIGURAÇÃO NECESSÁRIA\n\n' +
-                'Por favor, configure suas credenciais do Supabase no arquivo js/supabase.js\n\n' +
-                '1. Acesse https://supabase.com\n' +
-                '2. Crie um novo projeto\n' +
-                '3. Execute o script SQL em supabase/schema.sql\n' +
-                '4. Copie suas credenciais para js/supabase.js'
-            );
+        // Mensagem específica baseada no erro
+        if (error.message && error.message.includes('Failed to fetch')) {
+            console.error('Possível problema: URL do Supabase incorreta ou projeto inativo');
+        } else if (error.message && error.message.includes('JWT')) {
+            console.error('Possível problema: Chave anon incorreta');
+        } else if (error.code === '42P01') {
+            console.error('Possível problema: Tabelas não criadas. Execute o schema.sql');
         }
+        
         return false;
     }
 }
+
+// Exportar para o escopo global
+window.verificarConexao = verificarConexao;
 
 // ============================================
 // FUNÇÕES DE ACESSO AO BANCO

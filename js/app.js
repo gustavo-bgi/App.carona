@@ -18,24 +18,126 @@ const appState = {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Verificar conexão com Supabase
-    const conectado = await verificarConexao();
-    if (!conectado) {
+    console.log('🚀 Iniciando aplicação...');
+    
+    try {
+        // Verificar se verificarConexao existe
+        if (typeof window.verificarConexao !== 'function') {
+            console.error('❌ Função verificarConexao não encontrada');
+            console.error('Certifique-se que o arquivo js/supabase.js foi carregado corretamente');
+            mostrarTelaErro('Erro ao carregar scripts. Recarregue a página.');
+            esconderLoading();
+            return;
+        }
+        
+        // Verificar conexão com Supabase
+        const conectado = await window.verificarConexao();
+        
+        if (!conectado) {
+            console.log('⚠️ Supabase não configurado - mostrando tela de instruções');
+            esconderLoading();
+            mostrarTelaConfiguracao();
+            return;
+        }
+        
+        console.log('✅ Supabase configurado corretamente');
+        
+        // Configurar mês atual
+        const { mes, ano } = obterMesAnoAtual();
+        appState.mesAtual = mes;
+        appState.anoAtual = ano;
+        
+        // Inicializar interface
+        inicializarEventListeners();
+        await carregarDadosIniciais();
+        
+        console.log('✅ Aplicação iniciada com sucesso!');
+        
+    } catch (error) {
+        console.error('❌ Erro crítico na inicialização:', error);
+        mostrarNotificacao('Erro ao inicializar aplicação. Abra o Console (F12) para mais detalhes.', 'error');
+        mostrarTelaErro('Erro ao inicializar: ' + error.message);
+    } finally {
         esconderLoading();
-        return;
     }
-    
-    // Configurar mês atual
-    const { mes, ano } = obterMesAnoAtual();
-    appState.mesAtual = mes;
-    appState.anoAtual = ano;
-    
-    // Inicializar interface
-    inicializarEventListeners();
-    await carregarDadosIniciais();
-    
-    esconderLoading();
 });
+
+function mostrarTelaErro(mensagem) {
+    document.body.innerHTML = `
+        <div style="max-width: 600px; margin: 50px auto; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: system-ui;">
+            <h1 style="color: #ef4444; margin-bottom: 20px;">❌ Erro</h1>
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">${mensagem}</p>
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <strong>Possíveis soluções:</strong>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Recarregue a página (F5)</li>
+                    <li>Verifique se todos os arquivos estão presentes</li>
+                    <li>Abra o Console (F12) e veja os erros</li>
+                    <li>Verifique sua conexão de internet</li>
+                </ul>
+            </div>
+            <button onclick="window.location.reload()" style="background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px;">
+                🔄 Recarregar Página
+            </button>
+        </div>
+    `;
+}
+
+function mostrarTelaConfiguracao() {
+    document.body.innerHTML = `
+        <div style="max-width: 600px; margin: 50px auto; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: system-ui;">
+            <h1 style="color: #2563eb; margin-bottom: 20px;">⚠️ Configuração Necessária</h1>
+            
+            <div style="background: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 20px;">
+                <strong>A aplicação precisa ser configurada!</strong>
+            </div>
+            
+            <h2 style="font-size: 18px; margin: 20px 0 10px 0;">📋 Passo a Passo:</h2>
+            
+            <ol style="line-height: 1.8;">
+                <li><strong>Criar conta no Supabase:</strong><br>
+                    Acesse <a href="https://supabase.com" target="_blank" style="color: #2563eb;">https://supabase.com</a> e crie uma conta gratuita
+                </li>
+                
+                <li><strong>Criar um projeto:</strong><br>
+                    Clique em "New Project" e dê um nome (ex: carona-app)
+                </li>
+                
+                <li><strong>Executar o SQL:</strong><br>
+                    Vá em "SQL Editor" → "New Query" → Cole o conteúdo do arquivo <code>supabase/schema.sql</code> → Run
+                </li>
+                
+                <li><strong>Pegar credenciais:</strong><br>
+                    Vá em Settings → API e copie:
+                    <ul>
+                        <li>Project URL</li>
+                        <li>anon public key</li>
+                    </ul>
+                </li>
+                
+                <li><strong>Configurar a aplicação:</strong><br>
+                    Edite o arquivo <code>js/supabase.js</code> e substitua:
+                    <pre style="background: #f1f5f9; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">const SUPABASE_URL = 'sua-url-aqui';
+const SUPABASE_ANON_KEY = 'sua-chave-aqui';</pre>
+                </li>
+                
+                <li><strong>Recarregar a página:</strong><br>
+                    Após salvar, atualize esta página (F5)
+                </li>
+            </ol>
+            
+            <div style="background: #dbeafe; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <strong>💡 Dica:</strong> Todo o processo leva cerca de 5 minutos!
+            </div>
+            
+            <div style="margin-top: 30px; text-align: center;">
+                <button onclick="window.location.reload()" style="background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px;">
+                    🔄 Tentar Novamente
+                </button>
+            </div>
+        </div>
+    `;
+}
 
 // ============================================
 // CARREGAR DADOS
@@ -689,59 +791,129 @@ async function mudarMes(evento) {
 // ============================================
 
 function inicializarEventListeners() {
-    // Tabs
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tab = btn.getAttribute('data-tab');
-            
-            // Atualizar botões
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            // Atualizar conteúdo
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
+    console.log('🔧 Inicializando event listeners...');
+    
+    try {
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                console.log('Tab clicada:', btn.getAttribute('data-tab'));
+                const tab = btn.getAttribute('data-tab');
+                
+                // Atualizar botões
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Atualizar conteúdo
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
+            });
         });
-    });
-    
-    // Botões principais
-    document.getElementById('btnNovaPessoa').addEventListener('click', novaPessoa);
-    document.getElementById('btnSalvarPessoa').addEventListener('click', salvarPessoa);
-    
-    document.getElementById('btnNovaViagem').addEventListener('click', novaViagem);
-    document.getElementById('btnSalvarViagem').addEventListener('click', salvarViagem);
-    
-    document.getElementById('btnFecharMes').addEventListener('click', fecharMes);
-    document.getElementById('btnGerarRelatorio').addEventListener('click', gerarRelatorio);
-    
-    // Mudança de mês
-    document.getElementById('mesSelecionado').addEventListener('change', mudarMes);
-    
-    // Fechar modais
-    document.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const modalId = btn.getAttribute('data-modal');
-            if (modalId) esconderModal(modalId);
+        
+        // Botões principais
+        const btnNovaPessoa = document.getElementById('btnNovaPessoa');
+        const btnSalvarPessoa = document.getElementById('btnSalvarPessoa');
+        const btnNovaViagem = document.getElementById('btnNovaViagem');
+        const btnSalvarViagem = document.getElementById('btnSalvarViagem');
+        const btnFecharMes = document.getElementById('btnFecharMes');
+        const btnGerarRelatorio = document.getElementById('btnGerarRelatorio');
+        
+        if (btnNovaPessoa) {
+            btnNovaPessoa.addEventListener('click', () => {
+                console.log('Botão Nova Pessoa clicado');
+                novaPessoa();
+            });
+        }
+        
+        if (btnSalvarPessoa) {
+            btnSalvarPessoa.addEventListener('click', () => {
+                console.log('Botão Salvar Pessoa clicado');
+                salvarPessoa();
+            });
+        }
+        
+        if (btnNovaViagem) {
+            btnNovaViagem.addEventListener('click', () => {
+                console.log('Botão Nova Viagem clicado');
+                novaViagem();
+            });
+        }
+        
+        if (btnSalvarViagem) {
+            btnSalvarViagem.addEventListener('click', () => {
+                console.log('Botão Salvar Viagem clicado');
+                salvarViagem();
+            });
+        }
+        
+        if (btnFecharMes) {
+            btnFecharMes.addEventListener('click', () => {
+                console.log('Botão Fechar Mês clicado');
+                fecharMes();
+            });
+        }
+        
+        if (btnGerarRelatorio) {
+            btnGerarRelatorio.addEventListener('click', () => {
+                console.log('Botão Gerar Relatório clicado');
+                gerarRelatorio();
+            });
+        }
+        
+        // Mudança de mês
+        const mesSelecionado = document.getElementById('mesSelecionado');
+        if (mesSelecionado) {
+            mesSelecionado.addEventListener('change', (e) => {
+                console.log('Mês alterado:', e.target.value);
+                mudarMes(e);
+            });
+        }
+        
+        // Fechar modais
+        document.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modalId = btn.getAttribute('data-modal');
+                if (modalId) {
+                    console.log('Fechando modal:', modalId);
+                    esconderModal(modalId);
+                }
+            });
         });
-    });
-    
-    // Fechar modal ao clicar fora
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
+        
+        // Fechar modal ao clicar fora
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    console.log('Modal fechado por clique fora');
+                    modal.classList.add('hidden');
+                }
+            });
         });
-    });
-    
-    // Atualizar checkboxes quando mudar motorista ou valor
-    document.getElementById('viagemMotorista').addEventListener('change', () => {
-        renderizarPassageirosCheckboxes();
-    });
-    
-    document.getElementById('viagemValorTotal').addEventListener('input', () => {
-        atualizarValoresPassageiros();
-    });
+        
+        // Atualizar checkboxes quando mudar motorista ou valor
+        const viagemMotorista = document.getElementById('viagemMotorista');
+        const viagemValorTotal = document.getElementById('viagemValorTotal');
+        
+        if (viagemMotorista) {
+            viagemMotorista.addEventListener('change', () => {
+                console.log('Motorista alterado');
+                renderizarPassageirosCheckboxes();
+            });
+        }
+        
+        if (viagemValorTotal) {
+            viagemValorTotal.addEventListener('input', () => {
+                console.log('Valor total alterado');
+                atualizarValoresPassageiros();
+            });
+        }
+        
+        console.log('✅ Event listeners inicializados com sucesso');
+        
+    } catch (error) {
+        console.error('❌ Erro ao inicializar event listeners:', error);
+        mostrarNotificacao('Erro ao configurar interface', 'error');
+    }
 }
 
 // ============================================
