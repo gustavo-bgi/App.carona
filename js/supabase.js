@@ -9,7 +9,7 @@
 // 4. Copie a URL e a anon key
 
 const SUPABASE_URL = 'https://mlftdhglevxgpfeyjtnl.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_x5Yh7ZshxCbGDAj39j4GMQ_KBs71WYm';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZnRkaGdsZXZ4Z3BmZXlqdG5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzNTMyNjgsImV4cCI6MjA4NTkyOTI2OH0.SmL5tUpE_zlqzyPlcQqTys7CTzhNnJGjRfWLQqN75lA';
 
 // Inicializar cliente Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
