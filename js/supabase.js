@@ -5,7 +5,7 @@
 // CREDENCIAIS DO SUPABASE
 const SUPABASE_CONFIG = {
     url: 'https://mlftdhglevxgpfeyjtnl.supabase.co',
-    key: 'sb_publishable_x5Yh7ZshxCbGDAj39j4GMQ_KBs71WYm'
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZnRkaGdsZXZ4Z3BmZXlqdG5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzNTMyNjgsImV4cCI6MjA4NTkyOTI2OH0.SmL5tUpE_zlqzyPlcQqTys7CTzhNnJGjRfWLQqN75lA'
 };
 
 // Criar cliente Supabase
