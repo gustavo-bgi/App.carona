@@ -30,6 +30,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
+        // Verificar conexão com Supabase
+        const conectado = await window.verificarConexao();
+        
+        if (!conectado) {
+            console.log('⚠️ Supabase não configurado - mostrando tela de instruções');
+            esconderLoading();
+            mostrarTelaConfiguracao();
+            return;
+        }
+        
         console.log('✅ Supabase configurado corretamente');
         
         // Configurar mês atual
