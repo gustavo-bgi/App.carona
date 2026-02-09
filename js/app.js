@@ -9,13 +9,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const conf = await window.configDB.obter();
         if(conf) appState.config = conf;
-        
         appState.filtroMes = appState.config.mes_atual;
         appState.filtroAno = appState.config.ano_atual;
-        
         configurarInterface();
         await carregarDados();
-    } catch(e) { console.error("Erro ao iniciar", e); }
+    } catch(e) { console.error(e); }
 });
 
 async function carregarDados() {
@@ -28,94 +26,118 @@ async function carregarDados() {
         appState.pessoas = p || [];
         appState.viagens = v || [];
         
-        // Cálculo de saldo vinculado apenas ao que está em tela
+        // CÁLCULO DE SALDO VINCULADO AO MÊS EM TELA
         appState.saldos = s.map(pessoa => {
-            let pagarMes = 0; let receberMes = 0;
-            appState.viagens.forEach(viagem => {
-                if (viagem.motorista_id === pessoa.id) {
-                    receberMes += viagem.passageiros.reduce((acc, pass) => acc + parseFloat(pass.valor), 0);
+            let pag = 0; let rec = 0;
+            appState.viagens.forEach(via => {
+                if (via.motorista_id === pessoa.id) {
+                    rec += via.passageiros.reduce((acc, pass) => acc + parseFloat(pass.valor), 0);
                 }
-                const souPassageiro = viagem.passageiros.find(pass => pass.pessoa_id === pessoa.id);
-                if (souPassageiro) pagarMes += parseFloat(souPassageiro.valor);
+                const souPass = via.passageiros.find(pass => pass.pessoa_id === pessoa.id);
+                if (souPass) pag += parseFloat(souPass.valor);
             });
-            return { ...pessoa, a_pagar: pagarMes, a_receber: receberMes, saldo_liquido: receberMes - pagarMes };
+            return { ...pessoa, a_pagar: pag, a_receber: rec, saldo_liq: rec - pag };
         });
-        
         renderizar();
     } catch(e) { console.error(e); }
     finally { mostrarLoading(false); }
 }
 
 function renderizar() {
-    document.getElementById('totalViagens').innerText = appState.viagens.length;
     const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const label = document.getElementById('labelMes') || document.getElementById('mesAtual');
-    if(label) label.innerText = `${meses[appState.filtroMes-1]}/${appState.filtroAno}`;
+    document.getElementById('labelMes').innerText = `${meses[appState.filtroMes-1]}/${appState.filtroAno}`;
+    document.getElementById('totalViagens').innerText = appState.viagens.length;
 
-    // Tabela Saldos
-    const tbS = document.querySelector('#tabelaPessoas tbody');
-    if(tbS) {
-        tbS.innerHTML = '';
-        appState.saldos.filter(x => x.ativo || appState.isAdmin).forEach(s => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${s.nome}</td>
-                <td class="text-right text-danger">${fmtMoeda(s.a_pagar)}</td>
-                <td class="text-right text-success">${fmtMoeda(s.a_receber)}</td>
-                <td class="text-right font-bold ${s.saldo_liquido >= 0 ? 'text-success' : 'text-danger'}">${fmtMoeda(s.saldo_liquido)}</td>
-            `;
-            tbS.appendChild(tr);
-        });
-    }
+    const tbS = document.querySelector('#tabelaPessoas tbody'); tbS.innerHTML = '';
+    appState.saldos.filter(x => x.ativo || appState.isAdmin).forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${s.nome}</td><td class="text-right text-danger">${fmtMoeda(s.a_pagar)}</td><td class="text-right text-success">${fmtMoeda(s.a_receber)}</td><td class="text-right font-bold ${s.saldo_liq >= 0 ? 'text-success' : 'text-danger'}">${fmtMoeda(s.saldo_liq)}</td>`;
+        tbS.appendChild(tr);
+    });
 
-    // Tabela Viagens
-    const tbV = document.querySelector('#tabelaViagens tbody');
-    if(tbV) {
-        tbV.innerHTML = '';
-        appState.viagens.forEach(v => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${new Date(v.data+'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                <td>${v.motorista?.nome || '?'}</td>
-                <td class="text-right">${fmtMoeda(v.valor_total)}</td>
-                <td class="admin-only"><button class="btn btn-danger btn-sm" onclick="excluirViagem(${v.id})">🗑️</button></td>
-            `;
-            tbV.appendChild(tr);
-        });
-    }
+    const tbV = document.querySelector('#tabelaViagens tbody'); tbV.innerHTML = '';
+    appState.viagens.forEach(v => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${new Date(v.data+'T00:00:00').toLocaleDateString('pt-BR')}</td><td>${v.motorista?.nome || '?'}</td><td class="text-right">${fmtMoeda(v.valor_total)}</td><td class="admin-only"><button class="btn btn-danger btn-sm" onclick="excluirViagem(${v.id})">🗑️</button></td>`;
+        tbV.appendChild(tr);
+    });
 
-    popularSelectMeses();
+    popularSelect();
     document.body.classList.toggle('modo-admin-ativo', appState.isAdmin);
 }
 
 function configurarInterface() {
-    // Botão Nova Viagem
-    const btnV = document.getElementById('btnNovaViagemLink') || document.getElementById('btnNovaViagem');
-    if(btnV) btnV.onclick = () => window.abrirModalViagem();
+    document.getElementById('btnNovaViagem').onclick = () => {
+        document.getElementById('viagemId').value = '';
+        document.getElementById('viagemData').value = new Date().toISOString().split('T')[0];
+        document.getElementById('viagemValorUnit').value = appState.config.valor_padrao;
+        
+        const selMot = document.getElementById('viagemMotorista');
+        selMot.innerHTML = '<option value="">Motorista...</option>';
+        appState.pessoas.filter(p=>p.ativo).forEach(p => selMot.add(new Option(p.nome, p.id)));
 
-    // Botão Nova Pessoa
-    const btnP = document.getElementById('btnNovaPessoa');
-    if(btnP) btnP.onclick = () => window.abrirModalPessoa();
+        const divPass = document.getElementById('listaPassageiros'); divPass.innerHTML = '';
+        appState.pessoas.filter(p=>p.ativo).forEach(p => {
+            divPass.innerHTML += `<label style="display:block; padding:5px;"><input type="checkbox" class="chk-pass" value="${p.id}"> ${p.nome}</label>`;
+        });
+        document.getElementById('modalViagem').classList.remove('hidden');
+    };
 
-    // Botão Admin / Cadeado
+    document.getElementById('btnNovaPessoa').onclick = () => {
+        document.getElementById('pessoaId').value = '';
+        document.getElementById('pessoaNome').value = '';
+        document.getElementById('modalPessoa').classList.remove('hidden');
+    };
+
+    document.getElementById('btnAdminPanel').onclick = () => {
+        document.getElementById('configValorPadrao').value = appState.config.valor_padrao;
+        const lista = document.getElementById('listaUsuariosAdmin'); lista.innerHTML = '';
+        appState.pessoas.forEach(p => {
+            lista.innerHTML += `<div style="display:flex; justify-content:space-between; padding:5px; border-bottom:1px solid #eee"><span>${p.nome}</span><button class="btn btn-sm ${p.ativo?'btn-danger':'btn-primary'}" onclick="toggleAtivo(${p.id},${p.ativo})">${p.ativo?'Desativar':'Ativar'}</button></div>`;
+        });
+        document.getElementById('modalAdmin').classList.remove('hidden');
+    };
+
+    document.getElementById('btnSalvarConfig').onclick = async () => {
+        const val = parseFloat(document.getElementById('configValorPadrao').value);
+        if(!val) return;
+        await window.configDB.atualizar({ valor_padrao: val });
+        appState.config.valor_padrao = val;
+        alert('Valor padrão salvo!');
+        document.getElementById('modalAdmin').classList.add('hidden');
+    };
+
     document.getElementById('btnToggleAdmin').onclick = () => {
         appState.isAdmin = !appState.isAdmin;
         localStorage.setItem('modoAdmin', appState.isAdmin);
         renderizar();
     };
 
-    // Fechar Modais (O "X" e botões cancelar)
-    document.querySelectorAll('.modal-close, [data-modal]').forEach(botao => {
-        botao.onclick = () => {
-            document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
-        };
+    document.querySelectorAll('.modal-close').forEach(b => {
+        b.onclick = () => document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
     });
 
-    // Salvar Dados
-    document.getElementById('btnSalvarViagem').onclick = salvarViagem;
-    document.getElementById('btnSalvarPessoa').onclick = salvarPessoa;
+    document.getElementById('btnSalvarViagem').onclick = async () => {
+        const data = document.getElementById('viagemData').value;
+        const motorista_id = document.getElementById('viagemMotorista').value;
+        const valorUnit = parseFloat(document.getElementById('viagemValorUnit').value);
+        const checks = document.querySelectorAll('.chk-pass:checked');
+        if(!data || !motorista_id || !valorUnit || checks.length === 0) return alert('Preencha tudo!');
+        const pass = Array.from(checks).map(c => ({ pessoa_id: c.value, valor: valorUnit, pago: false }));
+        await window.viagensDB.criar({ data, motorista_id, valor_total: valorUnit * checks.length }, pass);
+        document.getElementById('modalViagem').classList.add('hidden');
+        await carregarDados();
+    };
+
+    document.getElementById('btnSalvarPessoa').onclick = async () => {
+        const nome = document.getElementById('pessoaNome').value;
+        if(!nome) return;
+        await window.pessoasDB.criar({ nome, ativo: true });
+        document.getElementById('modalPessoa').classList.add('hidden');
+        await carregarDados();
+    };
+
     document.getElementById('btnFecharMes').onclick = fecharMes;
-    
     document.getElementById('mesSelecionado').onchange = (e) => {
         const [m, a] = e.target.value.split('-');
         appState.filtroMes = parseInt(m); appState.filtroAno = parseInt(a);
@@ -123,84 +145,27 @@ function configurarInterface() {
     };
 }
 
-// --- FUNÇÕES DE PESSOA ---
-window.abrirModalPessoa = () => {
-    document.getElementById('pessoaId').value = '';
-    document.getElementById('pessoaNome').value = '';
-    document.getElementById('modalPessoa').classList.remove('hidden');
-};
-
-async function salvarPessoa() {
-    const nome = document.getElementById('pessoaNome').value;
-    if(!nome) return alert("Digite o nome");
-    try {
-        mostrarLoading(true);
-        await window.pessoasDB.criar({ nome, ativo: true });
-        document.getElementById('modalPessoa').classList.add('hidden');
-        await carregarDados();
-    } catch(e) { alert("Erro ao salvar pessoa"); }
-}
-
-// --- FUNÇÕES DE VIAGEM ---
-window.abrirModalViagem = () => {
-    document.getElementById('viagemId').value = '';
-    document.getElementById('viagemData').value = new Date().toISOString().split('T')[0];
-    document.getElementById('viagemValorUnit').value = appState.config.valor_padrao; // Volta o valor padrão
-    
-    const selMot = document.getElementById('viagemMotorista');
-    selMot.innerHTML = '<option value="">Motorista...</option>';
-    appState.pessoas.filter(p=>p.ativo).forEach(p => selMot.add(new Option(p.nome, p.id)));
-
-    const divPass = document.getElementById('listaPassageiros');
-    divPass.innerHTML = '';
-    appState.pessoas.filter(p=>p.ativo).forEach(p => {
-        divPass.innerHTML += `<label style="display:block; padding:8px;"><input type="checkbox" class="chk-pass" value="${p.id}"> ${p.nome}</label>`;
-    });
-
-    document.getElementById('modalViagem').classList.remove('hidden');
-};
-
-async function salvarViagem() {
-    const data = document.getElementById('viagemData').value;
-    const motorista_id = document.getElementById('viagemMotorista').value;
-    const valorUnit = parseFloat(document.getElementById('viagemValorUnit').value);
-    const checks = document.querySelectorAll('.chk-pass:checked');
-
-    if(!data || !motorista_id || !valorUnit || checks.length === 0) return alert('Preencha todos os campos!');
-
-    const dados = { data, motorista_id, valor_total: valorUnit * checks.length };
-    const passageiros = Array.from(checks).map(c => ({ pessoa_id: c.value, valor: valorUnit, pago: false }));
-
-    try {
-        mostrarLoading(true);
-        await window.viagensDB.criar(dados, passageiros);
-        document.getElementById('modalViagem').classList.add('hidden');
-        await carregarDados();
-    } catch(e) { alert("Erro ao salvar viagem"); }
-}
-
-// --- UTILITÁRIOS ---
-function popularSelectMeses() {
-    const sel = document.getElementById('mesSelecionado');
-    const selecionado = `${appState.filtroMes}-${appState.filtroAno}`;
-    sel.innerHTML = '';
-    let m = appState.config.mes_atual; let a = appState.config.ano_atual;
+function popularSelect() {
+    const sel = document.getElementById('mesSelecionado'); const v = `${appState.filtroMes}-${appState.filtroAno}`;
+    sel.innerHTML = ''; let m = appState.config.mes_atual, a = appState.config.ano_atual;
     for(let i=0; i<12; i++) {
         if(a < 2026 || (a === 2026 && m < 2)) break;
-        const opt = new Option(`${String(m).padStart(2,'0')}/${a} ${i===0?'(Aberto)':''}`, `${m}-${a}`);
-        sel.add(opt);
+        sel.add(new Option(`${String(m).padStart(2,'0')}/${a}${i===0?' (Aberto)':''}`, `${m}-${a}`));
         if(--m < 1) { m=12; a--; }
     }
-    sel.value = selecionado;
+    sel.value = v;
 }
 
 async function fecharMes() {
-    if(!confirm("Encerrar este mês?")) return;
-    let nM = appState.config.mes_atual + 1; let nA = appState.config.ano_atual;
+    if(!confirm("Fechar mês?")) return;
+    let nM = appState.config.mes_atual + 1, nA = appState.config.ano_atual;
     if(nM > 12) { nM = 1; nA++; }
     await window.configDB.atualizar({ mes_atual: nM, ano_atual: nA });
     location.reload();
 }
 
+window.toggleAtivo = async (id, status) => { await window.pessoasDB.atualizar(id, {ativo: !status}); await carregarDados(); };
+window.excluirViagem = async (id) => { if(confirm('Excluir?')) { await window.viagensDB.excluir(id); await carregarDados(); }};
 const fmtMoeda = (v) => parseFloat(v).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 const mostrarLoading = (s) => document.getElementById('loadingOverlay').classList.toggle('hidden', !s);
+            
