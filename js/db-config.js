@@ -163,4 +163,24 @@ window.estatisticasDB = {
     }
 };
 
+window.configDB = {
+    // Busca a configuração atual (Mês atual, Ano atual, Valor padrão)
+    async obter() {
+        // ID 1 é fixo
+        const { data, error } = await window.dbClient.from('app_config').select('*').eq('id', 1).single();
+        if (error) {
+            console.error('Erro ao ler config:', error);
+            // Fallback se der erro
+            return { mes_atual: new Date().getMonth() + 1, ano_atual: new Date().getFullYear(), valor_padrao: 5.00 };
+        }
+        return data;
+    },
+
+    // Atualiza qualquer campo da configuração
+    async atualizar(dados) {
+        const { error } = await window.dbClient.from('app_config').update(dados).eq('id', 1);
+        if (error) throw error;
+        return true;
+    }
+};
 console.log('✅ db-config.js carregado completamente.');
