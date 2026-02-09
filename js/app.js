@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         appState.filtroAno = appState.config.ano_atual;
         configurarInterface();
         await carregarDados();
-    } catch(e) { console.error("Erro ao carregar:", e); }
+    } catch(e) { console.error("Erro na inicialização:", e); }
 });
 
 async function carregarDados() {
@@ -26,7 +26,6 @@ async function carregarDados() {
         appState.pessoas = p || [];
         appState.viagens = v || [];
         
-        // Sincroniza saldos com as viagens do mês em tela
         appState.saldos = s.map(pessoa => {
             let pag = 0; let rec = 0;
             appState.viagens.forEach(via => {
@@ -73,28 +72,46 @@ function renderizar() {
     document.body.classList.toggle('modo-admin-ativo', appState.isAdmin);
 }
 
+function popularSelect() {
+    const sel = document.getElementById('mesSelecionado');
+    const valorAtual = `${appState.filtroMes}-${appState.filtroAno}`;
+    sel.innerHTML = '';
+    
+    let m = appState.config.mes_atual;
+    let a = appState.config.ano_atual;
+
+    // Gera o seletor de forma organizada parando em Fevereiro/2026
+    while (a > 2026 || (a === 2026 && m >= 2)) {
+        const texto = `${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`;
+        sel.add(new Option(texto, `${m}-${a}`));
+        m--; if (m < 1) { m = 12; a--; }
+    }
+    sel.value = valorAtual;
+}
+
 function configurarInterface() {
     document.getElementById('btnNovaViagem').onclick = () => window.abrirModalViagem();
+    
+    // VALIDAÇÃO MOTORISTA
+    document.getElementById('viagemMotorista').onchange = (e) => {
+        const motId = e.target.value;
+        document.querySelectorAll('.chk-pass').forEach(chk => {
+            if(chk.value === motId) { chk.checked = false; chk.disabled = true; chk.parentElement.style.opacity="0.4"; }
+            else { chk.disabled = false; chk.parentElement.style.opacity="1"; }
+        });
+    };
+
     document.getElementById('btnToggleAdmin').onclick = () => {
         appState.isAdmin = !appState.isAdmin;
         localStorage.setItem('modoAdmin', appState.isAdmin);
         renderizar();
     };
 
-    // MOTORISTA NÃO PODE SER PASSAGEIRO
-    document.getElementById('viagemMotorista').onchange = (e) => {
-        const motId = e.target.value;
-        document.querySelectorAll('.chk-pass').forEach(chk => {
-            if(chk.value === motId) { chk.checked = false; chk.disabled = true; chk.parentElement.style.opacity="0.3"; }
-            else { chk.disabled = false; chk.parentElement.style.opacity="1"; }
-        });
-    };
-
     document.querySelectorAll('.modal-close').forEach(b => b.onclick = () => document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden')));
     document.getElementById('btnSalvarViagem').onclick = salvarViagem;
     document.getElementById('btnNovaPessoa').onclick = () => document.getElementById('modalPessoa').classList.remove('hidden');
     document.getElementById('btnSalvarPessoa').onclick = salvarPessoa;
-    document.getElementById('btnAdminPanel').onclick = abrirModalAdmin; // CORREÇÃO AQUI
+    document.getElementById('btnAdminPanel').onclick = abrirModalAdmin;
     document.getElementById('btnSalvarConfig').onclick = salvarConfig;
     document.getElementById('btnFecharMes').onclick = fecharMes;
     
@@ -105,7 +122,6 @@ function configurarInterface() {
     };
 }
 
-// FUNÇÕES DE AÇÃO
 window.abrirModalViagem = (id = null) => {
     document.getElementById('viagemId').value = id || '';
     document.getElementById('viagemValorUnit').value = appState.config.valor_padrao;
@@ -168,18 +184,6 @@ async function salvarConfig() {
     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
 }
 
-function popularSelect() {
-    const sel = document.getElementById('mesSelecionado');
-    const v = `${appState.filtroMes}-${appState.filtroAno}`;
-    sel.innerHTML = '';
-    let m = appState.config.mes_atual; let a = appState.config.ano_atual;
-    while (a > 2026 || (a === 2026 && m >= 2)) {
-        sel.add(new Option(`${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`, `${m}-${a}`));
-        m--; if (m < 1) { m = 12; a--; }
-    }
-    sel.value = v;
-}
-
 async function fecharMes() {
     if(!confirm("Fechar mês?")) return;
     let nM = appState.config.mes_atual + 1; let nA = appState.config.ano_atual;
@@ -192,4 +196,4 @@ window.toggleAtivo = async (id, status) => { await window.pessoasDB.atualizar(id
 window.excluirViagem = async (id) => { if(confirm('Excluir?')) { await window.viagensDB.excluir(id); await carregarDados(); }};
 const fmtMoeda = (v) => parseFloat(v).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 const mostrarLoading = (s) => { const el = document.getElementById('loadingOverlay'); if(el) el.classList.toggle('hidden', !s); };
-                             
+        
