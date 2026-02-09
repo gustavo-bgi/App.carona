@@ -1,109 +1,98 @@
 // ============================================
-// ESTADO GLOBAL DA APLICAÇÃO
+// ESTADO GLOBAL
 // ============================================
 const appState = {
     mesAtual: new Date().getMonth() + 1,
     anoAtual: new Date().getFullYear(),
     pessoas: [],
     viagens: [],
-    viagemEditando: null
+    saldos: [], // Dados vindos da View nova
+    config: {
+        valorPadrao: localStorage.getItem('valorPadraoCarona') || 5.00
+    }
 };
 
-// ============================================
-// INICIALIZAÇÃO
-// ============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Iniciando App...');
+    if (typeof window.verificarConexao !== 'function') return alert('Erro nos scripts.');
+    if (!await window.verificarConexao()) return document.body.innerHTML = '<h1>Erro conexão banco</h1>';
 
-    // 1. Verifica se db-config.js carregou
-    if (typeof window.verificarConexao !== 'function') {
-        alert('Erro: db-config.js não carregado corretamente. Verifique a pasta JS.');
-        return;
-    }
-
-    // 2. Tenta Conectar
-    const conectado = await window.verificarConexao();
-    if (!conectado) {
-        document.querySelector('main').innerHTML = '<div class="alert alert-danger">Erro de conexão com o Banco de Dados. Verifique o console.</div>';
-        return;
-    }
-
-    // 3. Configurações Iniciais
-    configurarSelecaoMes();
-    configurarModais();
-    
-    // 4. Carrega Dados
+    configurarInterface();
     await carregarDados();
 });
 
 // ============================================
-// CONTROLE DE DADOS
+// CARREGAMENTO DE DADOS
 // ============================================
-
 async function carregarDados() {
     mostrarLoading(true);
     try {
-        console.log(`🔄 Carregando dados para ${appState.mesAtual}/${appState.anoAtual}...`);
+        // 1. Carregar Pessoas
+        const { data: pessoas } = await window.pessoasDB.listar();
+        appState.pessoas = pessoas || [];
 
-        // A. Carregar Pessoas (CORREÇÃO DO ERRO .map)
-        // Usamos desestruturação { data } para pegar o array de dentro do objeto de resposta
-        const { data: pessoas, error: erroPessoas } = await window.pessoasDB.listar();
-        if (erroPessoas) throw erroPessoas;
-        appState.pessoas = pessoas || []; // Garante que é array
+        // 2. Carregar Saldos (VIEW NOVA)
+        const { data: saldos } = await window.saldosDB.listarAtuais();
+        appState.saldos = saldos || [];
 
-        // B. Carregar Viagens
-        const { data: viagens, error: erroViagens } = await window.viagensDB.listar(appState.mesAtual, appState.anoAtual);
-        if (erroViagens) throw erroViagens;
+        // 3. Carregar Viagens do Mês
+        const { data: viagens } = await window.viagensDB.listar(appState.mesAtual, appState.anoAtual);
         appState.viagens = viagens || [];
 
-        // C. Carregar Dashboard
-        const stats = await window.estatisticasDB.obterDashboard(appState.mesAtual, appState.anoAtual);
-        atualizarDashboard(stats);
-
-        // D. Renderizar Tabelas
-        renderizarTabelaPessoas();
-        renderizarTabelaViagens();
-        atualizarSelectMotoristas();
-
+        renderizarTudo();
     } catch (err) {
-        console.error('❌ Erro ao carregar dados:', err);
-        alert('Erro ao carregar dados: ' + err.message);
+        console.error(err);
+        alert('Erro ao atualizar dados.');
     } finally {
         mostrarLoading(false);
     }
 }
 
-// ============================================
-// RENDERIZAÇÃO (INTERFACE)
-// ============================================
+function renderizarTudo() {
+    atualizarDashboard();
+    renderizarTabelaPessoas();
+    renderizarTabelaViagens();
+    atualizarSelectMotoristas();
+    atualizarResumoModal(); // Caso modal esteja aberto
+}
 
-function atualizarDashboard(stats) {
-    // Função segura para formatar moeda
-    const fmt = (v) => parseFloat(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+// ============================================
+// RENDERIZAÇÃO
+// ============================================
+function atualizarDashboard() {
+    const fmt = (v) => parseFloat(v||0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
     
-    document.getElementById('totalViagens').textContent = stats.totalViagens;
-    document.getElementById('kmTotal').textContent = stats.kmTotal + ' km';
-    document.getElementById('custoTotal').textContent = fmt(stats.custoTotal);
-    document.getElementById('custoMedio').textContent = fmt(stats.custoMedio);
+    // Total movimentado é a soma de todos os valores totais das viagens
+    const totalMovimentado = appState.viagens.reduce((acc, v) => acc + (parseFloat(v.valor_total)||0), 0);
+
+    document.getElementById('totalViagens').textContent = appState.viagens.length;
+    document.getElementById('custoTotal').textContent = fmt(totalMovimentado);
     
-    // Atualiza título do mês
     const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    document.getElementById('mesAtual').textContent = `${meses[appState.mesAtual - 1]} de ${appState.anoAtual}`;
+    document.getElementById('mesAtual').textContent = `${meses[appState.mesAtual - 1]}/${appState.anoAtual}`;
 }
 
 function renderizarTabelaPessoas() {
     const tbody = document.querySelector('#tabelaPessoas tbody');
     tbody.innerHTML = '';
+    const fmt = (v) => parseFloat(v||0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 
-    // Aqui usamos o .map que estava dando erro. Agora appState.pessoas é um Array seguro.
-    appState.pessoas.forEach(p => {
-        // Calcula saldo (Isso deveria vir do banco, simplificado aqui)
+    appState.saldos.forEach(s => {
+        // Encontrar status ativo se necessário (trazido da view)
         const tr = document.createElement('tr');
+        
+        // Estilo condicional para saldo
+        const saldoClass = s.saldo_liquido > 0 ? 'text-success' : (s.saldo_liquido < 0 ? 'text-danger' : '');
+        const saldoSinal = s.saldo_liquido > 0 ? '+' : '';
+
         tr.innerHTML = `
-            <td>${p.nome}</td>
-            <td>${p.ativo ? '<span style="color:green">Ativo</span>' : '<span style="color:red">Inativo</span>'}</td>
-            <td>--</td> <td>
-                <button class="btn btn-secondary btn-sm" onclick="abrirModalPessoa(${p.id})">Editar</button>
+            <td><strong>${s.nome}</strong></td>
+            <td class="text-right" style="color: #ef4444">${fmt(s.a_pagar)}</td>
+            <td class="text-right" style="color: #10b981">${fmt(s.a_receber)}</td>
+            <td class="text-right ${saldoClass}" style="font-weight: bold">
+                ${saldoSinal}${fmt(s.saldo_liquido)}
+            </td>
+            <td>
+                <button class="btn btn-secondary btn-sm" onclick="abrirModalPessoa(${s.id})">✏️</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -113,225 +102,228 @@ function renderizarTabelaPessoas() {
 function renderizarTabelaViagens() {
     const tbody = document.querySelector('#tabelaViagens tbody');
     tbody.innerHTML = '';
+    const fmt = (v) => parseFloat(v||0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 
-    if (appState.viagens.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma viagem neste mês.</td></tr>';
+    if (!appState.viagens.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma viagem encontrada.</td></tr>';
         return;
     }
 
     appState.viagens.forEach(v => {
+        // Descobre valor unitário pegando o primeiro passageiro (assumindo valor igual pra todos)
+        const valorUnitario = v.passageiros && v.passageiros.length > 0 
+            ? v.passageiros[0].valor 
+            : 0;
+
         const nomesPassageiros = v.passageiros 
-            ? v.passageiros.map(p => p.pessoa?.nome || 'Desconhecido').join(', ') 
+            ? v.passageiros.map(p => p.pessoa?.nome || '?').join(', ') 
             : '-';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${new Date(v.data + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-            <td>${v.observacao || 'Sem descrição'}</td>
             <td>${v.motorista?.nome || 'N/A'}</td>
             <td><small>${nomesPassageiros}</small></td>
-            <td>R$ ${parseFloat(v.valor_total).toFixed(2)}</td>
+            <td>${fmt(valorUnitario)}</td>
+            <td><strong>${fmt(v.valor_total)}</strong></td>
             <td>
-                <button class="btn btn-secondary btn-sm" onclick="abrirModalViagem(${v.id})">Editar</button>
-                <button class="btn btn-danger btn-sm" onclick="deletarViagem(${v.id})">Excluir</button>
+                <button class="btn btn-secondary btn-sm" onclick="abrirModalViagem(${v.id})">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="deletarViagem(${v.id})">🗑️</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-function atualizarSelectMotoristas() {
-    const select = document.getElementById('viagemMotorista');
-    select.innerHTML = '<option value="">Selecione...</option>';
+// ============================================
+// LÓGICA DE VIAGEM E CÁLCULOS
+// ============================================
+
+// Monitora mudanças no modal para recalcular totais em tempo real
+function atualizarResumoModal() {
+    const valorPorPessoa = parseFloat(document.getElementById('viagemValorPorPessoa').value) || 0;
+    const selecionados = document.querySelectorAll('.chk-passageiro:checked').length;
+    const totalMotorista = valorPorPessoa * selecionados;
     
-    appState.pessoas
-        .filter(p => p.ativo)
-        .forEach(p => {
-            select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
-        });
+    const div = document.getElementById('resumoViagem');
+    div.innerHTML = `
+        <strong>Resumo:</strong><br>
+        ${selecionados} Passageiro(s) x R$ ${valorPorPessoa.toFixed(2)}<br>
+        <strong>Total para o Motorista: R$ ${totalMotorista.toFixed(2)}</strong>
+    `;
 }
 
-// ============================================
-// FUNÇÕES DE AÇÃO (Salvar/Excluir)
-// ============================================
-
-// --- PESSOAS ---
-window.abrirModalPessoa = (id = null) => {
-    document.getElementById('pessoaId').value = id || '';
-    document.getElementById('pessoaNome').value = '';
-    document.getElementById('pessoaAtivo').checked = true;
-
-    if (id) {
-        const p = appState.pessoas.find(x => x.id === id);
-        if (p) {
-            document.getElementById('pessoaNome').value = p.nome;
-            document.getElementById('pessoaAtivo').checked = p.ativo;
-        }
-    }
-    document.getElementById('modalPessoa').classList.remove('hidden');
-};
-
-document.getElementById('btnSalvarPessoa').onclick = async () => {
-    const id = document.getElementById('pessoaId').value;
-    const nome = document.getElementById('pessoaNome').value;
-    const ativo = document.getElementById('pessoaAtivo').checked;
-
-    if (!nome) return alert('Nome é obrigatório');
-
-    mostrarLoading(true);
-    try {
-        if (id) {
-            await window.pessoasDB.atualizar(id, { nome, ativo });
-        } else {
-            await window.pessoasDB.criar({ nome, ativo });
-        }
-        document.getElementById('modalPessoa').classList.add('hidden');
-        await carregarDados();
-    } catch (e) {
-        alert('Erro ao salvar: ' + e.message);
-    } finally {
-        mostrarLoading(false);
-    }
-};
-
-// --- VIAGENS ---
 window.abrirModalViagem = async (id = null) => {
-    // Resetar form
+    // Resetar campos
     document.getElementById('viagemId').value = id || '';
     document.getElementById('viagemData').value = new Date().toISOString().split('T')[0];
     document.getElementById('viagemMotorista').value = '';
-    document.getElementById('viagemKm').value = '';
-    document.getElementById('viagemValorTotal').value = '';
-    document.getElementById('viagemObservacao').value = '';
     
-    // Renderizar Checkboxes de Passageiros
+    // Valor padrão (Configuração ou Edição)
+    document.getElementById('viagemValorPorPessoa').value = appState.config.valorPadrao;
+    document.getElementById('viagemObservacao').value = '';
+
+    // Renderizar Passageiros
     const container = document.getElementById('listaPassageirosCheckboxes');
     container.innerHTML = '';
     appState.pessoas.filter(p => p.ativo).forEach(p => {
         container.innerHTML += `
             <div style="margin-bottom: 5px;">
-                <input type="checkbox" id="pass_${p.id}" value="${p.id}" class="chk-passageiro">
+                <input type="checkbox" id="pass_${p.id}" value="${p.id}" class="chk-passageiro" onchange="atualizarResumoModal()">
                 <label for="pass_${p.id}">${p.nome}</label>
             </div>
         `;
     });
 
+    // Se for edição, preencher
     if (id) {
-        // Preencher dados se for edição
-        const v = appState.viagens.find(x => x.id == id); // == solto para pegar string/int
+        const v = appState.viagens.find(x => x.id == id);
         if (v) {
             document.getElementById('viagemData').value = v.data;
             document.getElementById('viagemMotorista').value = v.motorista_id;
-            document.getElementById('viagemKm').value = v.km || 0;
-            document.getElementById('viagemValorTotal').value = v.valor_total;
             document.getElementById('viagemObservacao').value = v.observacao || '';
             
-            // Marcar passageiros
-            if (v.passageiros) {
-                v.passageiros.forEach(pass => {
-                    const chk = document.getElementById(`pass_${pass.pessoa_id}`);
-                    if (chk) chk.checked = true;
-                });
+            // Valor Unitário (pega do primeiro passageiro)
+            if (v.passageiros && v.passageiros.length > 0) {
+                document.getElementById('viagemValorPorPessoa').value = v.passageiros[0].valor;
             }
+
+            // Marcar passageiros
+            v.passageiros?.forEach(p => {
+                const chk = document.getElementById(`pass_${p.pessoa_id}`);
+                if (chk) chk.checked = true;
+            });
         }
     }
     
+    atualizarResumoModal();
     document.getElementById('modalViagem').classList.remove('hidden');
+    
+    // Adiciona listener para recalcular ao mudar valor
+    document.getElementById('viagemValorPorPessoa').oninput = atualizarResumoModal;
 };
 
 document.getElementById('btnSalvarViagem').onclick = async () => {
     const id = document.getElementById('viagemId').value;
     const data = document.getElementById('viagemData').value;
     const motorista_id = document.getElementById('viagemMotorista').value;
-    const km = document.getElementById('viagemKm').value;
-    const valor_total = document.getElementById('viagemValorTotal').value;
+    const valorUnitario = parseFloat(document.getElementById('viagemValorPorPessoa').value);
     const observacao = document.getElementById('viagemObservacao').value;
 
-    if (!data || !motorista_id || !valor_total) return alert('Preencha os campos obrigatórios');
+    if (!motorista_id || !valorUnitario) return alert('Motorista e Valor são obrigatórios.');
 
-    // Coletar passageiros marcados
     const checkboxes = document.querySelectorAll('.chk-passageiro:checked');
-    if (checkboxes.length === 0) return alert('Selecione pelo menos um passageiro (quem vai dividir a conta).');
+    if (checkboxes.length === 0) return alert('Selecione ao menos um passageiro.');
 
-    const valorPorPessoa = parseFloat(valor_total) / (checkboxes.length); // Divisão simples
+    // NOVO CÁLCULO: Valor por pessoa é fixo, total é a soma
+    const valorTotalViagem = valorUnitario * checkboxes.length;
+
+    // Se motorista estiver marcado como passageiro também, é estranho, mas permitimos (ele paga pra ele mesmo?)
+    // Idealmente, desmarcaríamos o motorista da lista de passageiros, mas deixarei flexível.
 
     const passageiros = Array.from(checkboxes).map(chk => ({
         pessoa_id: chk.value,
-        valor: valorPorPessoa,
+        valor: valorUnitario,
         pago: false
     }));
 
-    const viagemDados = { data, motorista_id, km, valor_total, observacao };
+    const dadosViagem = { data, motorista_id, valor_total: valorTotalViagem, observacao };
 
     mostrarLoading(true);
     try {
-        if (id) {
-            await window.viagensDB.atualizar(id, viagemDados, passageiros);
-        } else {
-            await window.viagensDB.criar(viagemDados, passageiros);
-        }
+        if (id) await window.viagensDB.atualizar(id, dadosViagem, passageiros);
+        else await window.viagensDB.criar(dadosViagem, passageiros);
+        
         document.getElementById('modalViagem').classList.add('hidden');
         await carregarDados();
-    } catch (e) {
-        alert('Erro ao salvar viagem: ' + e.message);
-        console.error(e);
-    } finally {
-        mostrarLoading(false);
-    }
+    } catch (e) { alert(e.message); } 
+    finally { mostrarLoading(false); }
 };
 
 window.deletarViagem = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir esta viagem?')) return;
-    mostrarLoading(true);
-    try {
+    if(confirm('Excluir viagem?')) {
+        mostrarLoading(true);
         await window.viagensDB.excluir(id);
         await carregarDados();
-    } catch (e) {
-        alert('Erro: ' + e.message);
-    } finally {
         mostrarLoading(false);
     }
 };
 
 // ============================================
-// UTILITÁRIOS INTERNOS
+// CONFIGURAÇÃO E UTILS
 // ============================================
-
-function configurarSelecaoMes() {
-    const select = document.getElementById('mesSelecionado');
-    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+function configurarInterface() {
+    // Configura Mês Selector
+    const sel = document.getElementById('mesSelecionado');
+    sel.innerHTML = '';
+    ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    .forEach((m, i) => sel.add(new Option(m, i+1, i+1 === appState.mesAtual, i+1 === appState.mesAtual)));
     
-    select.innerHTML = '';
-    meses.forEach((nome, index) => {
-        const option = document.createElement('option');
-        option.value = index + 1;
-        option.text = nome;
-        if (index + 1 === appState.mesAtual) option.selected = true;
-        select.appendChild(option);
-    });
-
-    select.onchange = (e) => {
+    sel.onchange = (e) => {
         appState.mesAtual = parseInt(e.target.value);
         carregarDados();
     };
-}
 
-function configurarModais() {
-    // Botões para abrir modais
-    document.getElementById('btnNovaPessoa').onclick = () => window.abrirModalPessoa();
+    // Botão e Modal de Config
+    document.getElementById('btnConfig').onclick = () => {
+        document.getElementById('configValorPadrao').value = appState.config.valorPadrao;
+        document.getElementById('modalConfig').classList.remove('hidden');
+    };
+    
+    document.getElementById('btnSalvarConfig').onclick = () => {
+        const novoValor = document.getElementById('configValorPadrao').value;
+        if(novoValor) {
+            localStorage.setItem('valorPadraoCarona', novoValor);
+            appState.config.valorPadrao = novoValor;
+            alert('Configuração salva!');
+            document.getElementById('modalConfig').classList.add('hidden');
+        }
+    };
+
+    // Botões Padrões
     document.getElementById('btnNovaViagem').onclick = () => window.abrirModalViagem();
-
-    // Botões de fechar (X e Cancelar)
-    document.querySelectorAll('[data-modal]').forEach(btn => {
-        btn.onclick = (e) => {
-            const modalId = e.target.getAttribute('data-modal');
-            document.getElementById(modalId).classList.add('hidden');
+    document.getElementById('btnNovaPessoa').onclick = () => abrirModalPessoa();
+    document.querySelectorAll('.modal-close, [data-modal]').forEach(b => {
+        b.onclick = (e) => {
+            const id = e.target.getAttribute('data-modal') || e.target.closest('.modal').id;
+            document.getElementById(id).classList.add('hidden');
         };
     });
+
+    // Pessoas
+    window.abrirModalPessoa = (id) => {
+        document.getElementById('pessoaId').value = id || '';
+        document.getElementById('pessoaNome').value = id ? appState.pessoas.find(p=>p.id==id).nome : '';
+        document.getElementById('modalPessoa').classList.remove('hidden');
+    };
+
+    document.getElementById('btnSalvarPessoa').onclick = async () => {
+        const id = document.getElementById('pessoaId').value;
+        const nome = document.getElementById('pessoaNome').value;
+        const ativo = document.getElementById('pessoaAtivo').checked;
+        if(!nome) return alert('Nome obrigatório');
+        
+        mostrarLoading(true);
+        if(id) await window.pessoasDB.atualizar(id, {nome, ativo});
+        else await window.pessoasDB.criar({nome, ativo});
+        
+        document.getElementById('modalPessoa').classList.add('hidden');
+        await carregarDados();
+        mostrarLoading(false);
+    };
+}
+
+function atualizarSelectMotoristas() {
+    const sel = document.getElementById('viagemMotorista');
+    const valorAtual = sel.value;
+    sel.innerHTML = '<option value="">Selecione...</option>';
+    appState.pessoas.filter(p=>p.ativo).forEach(p => {
+        sel.add(new Option(p.nome, p.id));
+    });
+    sel.value = valorAtual;
 }
 
 function mostrarLoading(show) {
-    const overlay = document.getElementById('loadingOverlay');
-    if (show) overlay.classList.remove('hidden');
-    else overlay.classList.add('hidden');
+    const ov = document.getElementById('loadingOverlay');
+    show ? ov.classList.remove('hidden') : ov.classList.add('hidden');
 }
