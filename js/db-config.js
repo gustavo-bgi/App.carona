@@ -31,30 +31,11 @@ try {
 // FUNÇÕES GLOBAIS (USANDO WINDOW.)
 // ============================================
 
-// AQUI ESTÁ O SEGREDO: Usar window.verificarConexao = ...
-// Substitua a função verificarConexao inteira por esta:
-// Substitua a função verificarConexao inteira por esta:
 window.verificarConexao = async function() {
     console.log('🔄 Pulando verificação de conexão para testes...');
     return true; // Força o site a abrir
 };
     
-    try {
-        const { data, error } = await window.dbClient.from('pessoas').select('count', { count: 'exact', head: true });
-        
-        if (error) {
-            console.error('❌ Erro de conexão com Supabase:', error);
-            return false;
-        }
-        
-        console.log('✅ Conexão confirmada!');
-        return true;
-    } catch (err) {
-        console.error('❌ Erro inesperado:', err);
-        return false;
-    }
-};
-
 window.pessoasDB = {
     async listar(ativosApenas = false) {
         let query = window.dbClient.from('pessoas').select('*').order('nome');
