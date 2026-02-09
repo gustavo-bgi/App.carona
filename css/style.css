@@ -1,161 +1,28 @@
-/* =========================================
-   1. RESET E VARIÁVEIS
-   ========================================= */
-:root {
-    --primary: #2563eb;       /* Azul Principal */
-    --primary-dark: #1d4ed8;
-    --secondary: #64748b;     /* Cinza */
-    --success: #10b981;       /* Verde */
-    --danger: #ef4444;        /* Vermelho */
-    --background: #f1f5f9;    /* Fundo */
-    --surface: #ffffff;       /* Cards */
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --border: #e2e8f0;
-    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+/* Ajuste para a tabela caber em celulares */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem; /* Fonte levemente menor para mobile */
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-
-body { background-color: var(--background); color: var(--text-main); line-height: 1.5; padding-bottom: 2rem; }
-
-/* =========================================
-   2. LAYOUT E HEADER
-   ========================================= */
-.container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
-
-.header {
-    background-color: var(--surface);
-    box-shadow: var(--shadow);
-    padding: 1rem 0;
-    margin-bottom: 2rem;
-    position: sticky; top: 0; z-index: 100;
+.table th, .table td {
+    padding: 8px 4px; /* Reduz o espaçamento interno */
+    white-space: nowrap; /* Impede que os valores quebrem linha */
 }
 
-.header .container { display: flex; justify-content: space-between; align-items: center; }
-
-h1 { font-size: 1.5rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
-h2 { font-size: 1.25rem; margin-bottom: 1rem; border-left: 4px solid var(--primary); padding-left: 0.75rem; }
-
-.divider { border: 0; height: 1px; background: var(--border); margin: 2rem 0; }
-
-/* Botão Cadeado (Admin) */
-.btn-lock {
-    background: none; border: none; font-size: 1.2rem; cursor: pointer;
-    opacity: 0.3; transition: all 0.3s ease;
+.table td:first-child {
+    max-width: 80px; /* Limita o tamanho da coluna do nome */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Abrevia nomes muito longos */
 }
-body.modo-admin-ativo .btn-lock { opacity: 1; transform: scale(1.1); }
 
-/* Elementos Admin (Escondidos por padrão) */
-.admin-only { display: none !important; }
-body.modo-admin-ativo .admin-only { display: inline-flex !important; }
-
-/* =========================================
-   3. DASHBOARD E CARDS
-   ========================================= */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; }
-
-.stat-card {
-    background: var(--surface); padding: 1.5rem; border-radius: 0.75rem;
-    box-shadow: var(--shadow); display: flex; align-items: center; gap: 1rem;
-    transition: transform 0.2s;
+.text-right {
+    text-align: right;
 }
-.stat-card:hover { transform: translateY(-2px); }
 
-.stat-icon {
-    font-size: 2rem; background: #eff6ff; width: 60px; height: 60px;
-    display: flex; align-items: center; justify-content: center; border-radius: 50%;
-}
-.stat-label { font-size: 0.875rem; color: var(--text-muted); }
-.stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text-main); }
-
-/* Card Especial de Fechar Mês */
-.card-fechar { border: 2px solid #fecaca; background: #fff1f2; cursor: pointer; }
-.card-fechar:hover { background: #fee2e2; }
-
-/* =========================================
-   4. TABELAS
-   ========================================= */
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-
+/* Container que permite deslizar se ainda assim não couber */
 .table-responsive {
-    background: var(--surface); border-radius: 0.75rem; box-shadow: var(--shadow);
-    overflow: hidden; overflow-x: auto;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
-
-.table { width: 100%; border-collapse: collapse; }
-.table th {
-    background: #f8fafc; color: var(--text-muted); font-weight: 600;
-    font-size: 0.75rem; text-transform: uppercase; padding: 1rem; text-align: left;
-}
-.table td { padding: 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.table tr:last-child td { border-bottom: none; }
-
-/* Alinhamentos e Cores de Texto */
-.text-right { text-align: right; }
-.text-danger { color: var(--danger); font-weight: 600; }
-.text-success { color: var(--success); font-weight: 600; }
-.font-bold { font-weight: 700; }
-
-/* =========================================
-   5. BOTÕES E FORMULÁRIOS
-   ========================================= */
-.btn {
-    padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: none;
-    cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem;
-    transition: 0.2s; font-size: 0.9rem;
-}
-.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
-
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:hover { background: var(--primary-dark); }
-
-.btn-secondary { background: white; border: 1px solid var(--border); color: var(--text-main); }
-.btn-secondary:hover { background: #f8fafc; }
-
-.btn-danger { background: var(--danger); color: white; }
-.btn-danger:hover { opacity: 0.9; }
-
-/* Inputs */
-.form-control {
-    width: 100%; padding: 0.7rem; border: 1px solid var(--border);
-    border-radius: 0.5rem; margin-bottom: 1rem; font-size: 1rem;
-}
-.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
-.row { display: flex; gap: 1rem; }
-.col { flex: 1; }
-
-/* Checkboxes List */
-.checkbox-list {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem;
-    background: #f8fafc; padding: 1rem; border-radius: 0.5rem; border: 1px solid var(--border);
-}
-.checkbox-group { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
-
-/* =========================================
-   6. MODAIS E LOADING
-   ========================================= */
-.modal {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
-    display: flex; justify-content: center; align-items: center; z-index: 1000;
-}
-.modal.hidden { display: none; }
-
-.modal-content {
-    background: var(--surface); width: 90%; max-width: 500px;
-    border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
-    display: flex; flex-direction: column; max-height: 90vh;
-}
-.modal-lg { max-width: 700px; }
-
-.modal-header { padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-.modal-body { padding: 1.5rem; overflow-y: auto; }
-.modal-footer { padding: 1.5rem; border-top: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: flex-end; gap: 1rem; border-radius: 0 0 1rem 1rem; }
-
-.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
-
-/* Loading */
-.loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
-.loading-overlay.hidden { display: none; }
-.spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
