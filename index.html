@@ -4,26 +4,64 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Caronas</title>
-    <link rel="stylesheet" href="css/style.css?v=25">
+    <link rel="stylesheet" href="css/style.css?v=30">
     <style>
+        /* Garantir que elementos admin sumam quando o cadeado fechar */
         .admin-only { display: none !important; }
         body.modo-admin-ativo .admin-only { display: inline-flex !important; }
-        .btn-lock { background: none; border: none; font-size: 1.4rem; cursor: pointer; opacity: 0.3; }
-        body.modo-admin-ativo .btn-lock { opacity: 1; }
+
+        /* Estilo do Cadeado */
+        .btn-lock { 
+            background: none; border: none; font-size: 1.4rem; 
+            cursor: pointer; opacity: 0.3; transition: 0.3s;
+        }
+        body.modo-admin-ativo .btn-lock { opacity: 1; transform: scale(1.1); }
+
+        /* Ajuste para o Header não quebrar em telas pequenas */
+        .header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Melhoria nas tabelas para celular */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Dashboard mais limpo */
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
     <div id="loadingOverlay" class="loading-overlay hidden"><div class="spinner"></div></div>
 
     <header class="header">
-        <div class="container" style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:10px;">
+        <div class="container">
+            <div style="display:flex; align-items:center; gap:8px;">
                 <h1>🚗 Caronas</h1>
-                <button id="btnToggleAdmin" class="btn-lock">🔒</button>
+                <button id="btnToggleAdmin" class="btn-lock" title="Modo Admin">🔒</button>
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
-                <select id="mesSelecionado" class="month-selector" style="width: auto;"></select>
-                <button id="btnAdminPanel" class="btn btn-danger btn-sm admin-only">⚙️</button>
+            
+            <div class="header-right">
+                <select id="mesSelecionado" class="month-selector" style="width: auto; padding: 5px; border-radius: 5px;"></select>
+                <button id="btnAdminPanel" class="btn btn-danger btn-sm admin-only" title="Configurações">⚙️</button>
             </div>
         </div>
     </header>
@@ -32,30 +70,133 @@
         <section class="dashboard">
             <div class="stat-card">
                 <div class="stat-icon">🗓️</div>
-                <div><div class="stat-label">Viagens em <span id="labelMes">...</span></div><div class="stat-value" id="totalViagens">0</div></div>
+                <div>
+                    <div class="stat-label">Viagens em <span id="labelMes">...</span></div>
+                    <div class="stat-value" id="totalViagens">0</div>
+                </div>
             </div>
-            <button id="btnFecharMes" class="btn btn-danger admin-only" style="width:100%; margin-top:10px;">Encerrar Mês Atual</button>
+            <button id="btnFecharMes" class="btn btn-danger admin-only" style="width:100%;">Encerrar Mês Atual</button>
         </section>
 
         <hr class="divider">
+
         <section>
-            <div class="section-header"><h2>Saldos</h2><button id="btnNovaPessoa" class="btn btn-primary btn-sm admin-only">+ Pessoa</button></div>
-            <div class="table-responsive"><table class="table"><thead><tr><th>Nome</th><th class="text-right">Dívida</th><th class="text-right">Crédito</th><th class="text-right">Saldo</th></tr></thead><tbody id="tabelaPessoas"></tbody></table></div>
+            <div class="section-header">
+                <h2>Saldos</h2>
+                <button id="btnNovaPessoa" class="btn btn-primary btn-sm admin-only">+ Pessoa</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table" id="tabelaPessoas">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th class="text-right">Dívida</th>
+                            <th class="text-right">Crédito</th>
+                            <th class="text-right">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
         </section>
 
         <hr class="divider">
+
         <section>
-            <div class="section-header"><h2>Viagens</h2><button id="btnNovaViagem" class="btn btn-primary btn-sm">+ Viagem</button></div>
-            <div class="table-responsive"><table class="table"><thead><tr><th>Data</th><th>Motorista</th><th class="text-right">Total</th><th class="admin-only">Ações</th></tr></thead><tbody id="tabelaViagens"></tbody></table></div>
+            <div class="section-header">
+                <h2>Viagens</h2>
+                <button id="btnNovaViagem" class="btn btn-primary btn-sm">+ Viagem</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table" id="tabelaViagens">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Motorista</th>
+                            <th class="text-right">Total</th>
+                            <th class="admin-only">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
         </section>
     </main>
 
-    <div id="modalAdmin" class="modal hidden"><div class="modal-content"><div class="modal-header"><h3>⚙️ Configurações</h3><button class="modal-close">&times;</button></div><div class="modal-body"><div class="form-group"><label>Valor Padrão (R$)</label><input type="number" id="configValorPadrao" class="form-control" step="0.5"><button id="btnSalvarConfig" class="btn btn-primary" style="width:100%">Salvar Valor</button></div><hr class="divider"><h4>Usuários</h4><div id="listaUsuariosAdmin" style="max-height:180px; overflow-y:auto;"></div></div></div></div>
-    <div id="modalViagem" class="modal hidden"><div class="modal-content"><div class="modal-header"><h3>Nova Viagem</h3><button class="modal-close">&times;</button></div><div class="modal-body"><div class="form-group"><label>Data</label><input type="date" id="viagemData" class="form-control"></div><div class="form-group"><label>Motorista</label><select id="viagemMotorista" class="form-control"></select></div><div class="form-group"><label>Valor Unitário (R$)</label><input type="number" id="viagemValorUnit" class="form-control" step="0.5"></div><div class="form-group"><label>Passageiros</label><div id="listaPassageiros" class="checkbox-list"></div></div></div><div class="modal-footer"><button id="btnSalvarViagem" class="btn btn-primary" style="width:100%">Salvar</button></div></div></div>
-    <div id="modalPessoa" class="modal hidden"><div class="modal-content"><div class="modal-header"><h3>Nova Pessoa</h3><button class="modal-close">&times;</button></div><div class="modal-body"><div class="form-group"><label>Nome</label><input type="text" id="pessoaNome" class="form-control"></div></div><div class="modal-footer"><button id="btnSalvarPessoa" class="btn btn-primary" style="width:100%">Salvar</button></div></div></div>
+    <div id="modalAdmin" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Configurações</h3>
+                <button class="modal-close" data-modal="modalAdmin">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Valor Padrão da Carona (R$)</label>
+                    <input type="number" id="configValorPadrao" class="form-control" step="0.5">
+                    <button id="btnSalvarConfig" class="btn btn-primary" style="width:100%; margin-top:10px;">Salvar Valor</button>
+                </div>
+                <hr class="divider">
+                <h4>Gerenciar Usuários</h4>
+                <div id="listaUsuariosAdmin" style="max-height:200px; overflow-y:auto; margin-top:10px;">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalViagem" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Viagem</h3>
+                <button class="modal-close" data-modal="modalViagem">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="viagemId">
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="viagemData" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Motorista</label>
+                    <select id="viagemMotorista" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>Valor Unitário (R$)</label>
+                    <input type="number" id="viagemValorUnit" class="form-control" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label>Passageiros</label>
+                    <div id="listaPassageiros" class="checkbox-list" style="max-height:150px; overflow-y:auto; border:1px solid #ddd; padding:10px; border-radius:5px;">
+                        </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSalvarViagem" class="btn btn-primary" style="width:100%">Salvar Viagem</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalPessoa" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Pessoa</h3>
+                <button class="modal-close" data-modal="modalPessoa">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="pessoaNome" class="form-control" placeholder="Ex: João Silva">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSalvarPessoa" class="btn btn-primary" style="width:100%">Cadastrar</button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/db-config.js?v=25"></script>
-    <script src="js/app.js?v=25"></script>
+    <script src="js/db-config.js?v=30"></script>
+    <script src="js/app.js?v=30"></script>
 </body>
 </html>
