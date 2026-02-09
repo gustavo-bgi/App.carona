@@ -33,11 +33,10 @@ try {
 
 // AQUI ESTÁ O SEGREDO: Usar window.verificarConexao = ...
 // Substitua a função verificarConexao inteira por esta:
+// Substitua a função verificarConexao inteira por esta:
 window.verificarConexao = async function() {
-    console.log('🔄 Verificação de conexão ignorada temporariamente para testes.');
-    
-    // Força o retorno TRUE para o app não travar
-    return true; 
+    console.log('🔄 Pulando verificação de conexão para testes...');
+    return true; // Força o site a abrir
 };
     
     try {
