@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Caronas</title>
-    <link rel="stylesheet" href="css/style.css?v=15">
+    <link rel="stylesheet" href="css/style.css?v=20">
     <style>
         .admin-only { display: none !important; }
         body.modo-admin-ativo .admin-only { display: inline-flex !important; }
@@ -21,8 +21,8 @@
                 <h1>🚗 Caronas</h1>
                 <button id="btnToggleAdmin" class="btn-lock">🔒</button>
             </div>
-            <div style="display:flex; gap:10px; align-items:center;">
-                <select id="mesSelecionado" class="month-selector"></select>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <select id="mesSelecionado" class="month-selector" style="width: auto;"></select>
                 <button id="btnAdminPanel" class="btn btn-danger btn-sm admin-only">⚙️</button>
             </div>
         </div>
@@ -50,12 +50,7 @@
             <div class="table-responsive">
                 <table class="table" id="tabelaPessoas">
                     <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th class="text-right">Dívida</th>
-                            <th class="text-right">Crédito</th>
-                            <th class="text-right">Saldo</th>
-                        </tr>
+                        <tr><th>Nome</th><th class="text-right">Dívida</th><th class="text-right">Crédito</th><th class="text-right">Saldo</th></tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -82,23 +77,23 @@
 
     <div id="modalAdmin" class="modal hidden">
         <div class="modal-content">
-            <div class="modal-header"><h3>⚙️ Configurações</h3><button class="modal-close" data-modal="modalAdmin">&times;</button></div>
+            <div class="modal-header"><h3>⚙️ Configurações</h3><button class="modal-close">&times;</button></div>
             <div class="modal-body">
                 <div class="form-group">
                     <label>Valor Padrão da Carona (R$)</label>
                     <input type="number" id="configValorPadrao" class="form-control" step="0.5">
-                    <button id="btnSalvarConfig" class="btn btn-primary" style="width:100%">Salvar Valor Padrão</button>
+                    <button id="btnSalvarConfig" class="btn btn-primary" style="width:100%">Salvar Valor</button>
                 </div>
                 <hr class="divider">
                 <h4>Usuários</h4>
-                <div id="listaUsuariosAdmin" style="max-height:150px; overflow-y:auto;"></div>
+                <div id="listaUsuariosAdmin" style="max-height:180px; overflow-y:auto;"></div>
             </div>
         </div>
     </div>
 
     <div id="modalViagem" class="modal hidden">
         <div class="modal-content">
-            <div class="modal-header"><h3>Nova Viagem</h3><button class="modal-close" data-modal="modalViagem">&times;</button></div>
+            <div class="modal-header"><h3>Nova Viagem</h3><button class="modal-close">&times;</button></div>
             <div class="modal-body">
                 <input type="hidden" id="viagemId">
                 <div class="form-group"><label>Data</label><input type="date" id="viagemData" class="form-control"></div>
@@ -112,16 +107,14 @@
 
     <div id="modalPessoa" class="modal hidden">
         <div class="modal-content">
-            <div class="modal-header"><h3>Pessoa</h3><button class="modal-close" data-modal="modalPessoa">&times;</button></div>
-            <div class="modal-body">
-                <input type="hidden" id="pessoaId"><div class="form-group"><label>Nome</label><input type="text" id="pessoaNome" class="form-control"></div>
-            </div>
+            <div class="modal-header"><h3>Nova Pessoa</h3><button class="modal-close">&times;</button></div>
+            <div class="modal-body"><div class="form-group"><label>Nome</label><input type="text" id="pessoaNome" class="form-control"></div></div>
             <div class="modal-footer"><button id="btnSalvarPessoa" class="btn btn-primary" style="width:100%">Salvar</button></div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/db-config.js?v=15"></script>
-    <script src="js/app.js?v=15"></script>
+    <script src="js/db-config.js?v=20"></script>
+    <script src="js/app.js?v=20"></script>
 </body>
 </html>
