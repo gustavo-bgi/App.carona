@@ -1,7 +1,206 @@
-<div class="form-group">
-    <label>Valor Unitário (R$)</label>
-    <div class="moeda-input-group">
-        <span>R$</span>
-        <input type="number" id="viagemValorUnit" disabled>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Caronas</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* CONFIGURAÇÕES DE VISUAL E ALINHAMENTO */
+        * { box-sizing: border-box; }
+        
+        .admin-only { display: none !important; }
+        body.modo-admin-ativo .admin-only { display: inline-flex !important; }
+        
+        .btn-lock { background: none; border: none; font-size: 1.4rem; cursor: pointer; opacity: 0.3; }
+        body.modo-admin-ativo .btn-lock { opacity: 1; }
+
+        /* AJUSTE DA TABELA DE SALDOS PARA CABER NO ECRÃ */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            background: #fff;
+            border-radius: 8px;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem; /* Fonte levemente menor para mobile */
+        }
+
+        .table th, .table td {
+            padding: 10px 4px;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        .table td:first-child {
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .text-right { text-align: right; }
+
+        /* CORREÇÃO DO DESALINHAMENTO NO POPUP (VALOR UNITÁRIO) */
+        .moeda-input-group {
+            display: flex;
+            align-items: center; /* Alinha R$ e número na mesma linha */
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #f9f9f9;
+            padding: 0 12px;
+            height: 45px;
+        }
+
+        .moeda-input-group span {
+            font-weight: bold;
+            color: #555;
+            margin-right: 8px;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .moeda-input-group input {
+            border: none !important;
+            background: transparent !important;
+            width: 100%;
+            font-size: 1.1rem;
+            color: #333;
+            outline: none;
+            padding: 0 !important;
+            margin: 0 !important;
+            height: 100%;
+        }
+
+        /* MODAIS */
+        .modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay hidden"><div class="spinner"></div></div>
+
+    <header class="header">
+        <div class="container" style="display:flex; justify-content:space-between; align-items:center; padding: 10px 15px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <h1 style="margin:0; font-size:1.5rem;">🚗 Caronas</h1>
+                <button id="btnToggleAdmin" class="btn-lock">🔒</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <select id="mesSelecionado" class="month-selector" style="padding:5px; border-radius:5px;"></select>
+                <button id="btnAdminPanel" class="btn btn-danger btn-sm admin-only">⚙️</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container" style="padding:15px;">
+        <section class="dashboard" style="margin-bottom:20px;">
+            <div class="stat-card" style="background:#fff; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1); display:flex; align-items:center; gap:15px;">
+                <div style="font-size:2rem;">🗓️</div>
+                <div>
+                    <div style="font-size:0.8rem; color:#666;">Viagens em <span id="labelMes">...</span></div>
+                    <div style="font-size:1.5rem; font-weight:bold;" id="totalViagens">0</div>
+                </div>
+            </div>
+            <button id="btnFecharMes" class="btn btn-danger admin-only" style="width:100%; margin-top:10px; padding:10px; border-radius:6px; border:none; font-weight:bold;">Encerrar Mês Atual</button>
+        </section>
+
+        <section style="margin-bottom:30px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h2 style="font-size:1.2rem; margin:0;">Saldos</h2>
+                <button id="btnNovaPessoa" class="btn btn-primary btn-sm admin-only">+ Pessoa</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table" id="tabelaPessoas">
+                    <thead>
+                        <tr style="background:#f8f9fa;">
+                            <th style="text-align:left;">NOME</th>
+                            <th class="text-right">DÍVIDA</th>
+                            <th class="text-right">CRÉDITO</th>
+                            <th class="text-right">SALDO</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h2 style="font-size:1.2rem; margin:0;">Viagens</h2>
+                <button id="btnNovaViagem" class="btn btn-primary btn-sm" style="background:#2b6cb0; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold;">+ Viagem</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table" id="tabelaViagens">
+                    <thead>
+                        <tr style="background:#f8f9fa;">
+                            <th style="text-align:left;">DATA</th>
+                            <th style="text-align:left;">MOT.</th>
+                            <th class="text-right">TOTAL</th>
+                            <th class="admin-only">AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="modalViagem" class="modal hidden">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="margin:0;">Nova Viagem</h3>
+                <button class="modal-close" style="border:none; background:none; font-size:1.5rem;">&times;</button>
+            </div>
+            <input type="hidden" id="viagemId">
+            <div style="margin-bottom:15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">Data</label>
+                <input type="date" id="viagemData" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;">
+            </div>
+            <div style="margin-bottom:15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">Motorista</label>
+                <select id="viagemMotorista" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;"></select>
+            </div>
+            <div style="margin-bottom:15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">Valor Unitário</label>
+                <div class="moeda-input-group">
+                    <span>R$</span>
+                    <input type="number" id="viagemValorUnit" disabled>
+                </div>
+            </div>
+            <div style="margin-bottom:15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">Passageiros</label>
+                <div id="listaPassageiros" style="max-height:150px; overflow-y:auto; border:1px solid #ddd; padding:10px; border-radius:6px;"></div>
+            </div>
+            <button id="btnSalvarViagem" style="width:100%; padding:12px; background:#2b6cb0; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Salvar Viagem</button>
+        </div>
     </div>
-</div>
+
+    <div id="modalAdmin" class="modal hidden"><div class="modal-content"><h3>⚙️ Configurações</h3><div id="listaUsuariosAdmin"></div><button class="modal-close">Fechar</button></div></div>
+    <div id="modalPessoa" class="modal hidden"><div class="modal-content"><h3>Nova Pessoa</h3><input type="text" id="pessoaNome"><button id="btnSalvarPessoa">Salvar</button><button class="modal-close">Cancelar</button></div></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/db-config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
