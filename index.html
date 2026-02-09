@@ -11,9 +11,9 @@
 
     <header class="header">
         <div class="container">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <h1>🚗 Caronas</h1>
-                <button id="btnToggleAdmin" style="background:none; border:none; font-size:1.2rem; cursor:pointer; opacity:0.3;">🔒</button>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <h1 style="font-size:1.4rem; margin:0;">🚗 Caronas</h1>
+                <button id="btnToggleAdmin" class="btn-lock">🔒</button>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <select id="mesSelecionado" class="month-selector"></select>
@@ -23,7 +23,7 @@
     </header>
 
     <main class="container">
-        <section class="dashboard">
+        <section>
             <div class="stat-card">
                 <div class="stat-icon">🗓️</div>
                 <div>
@@ -31,24 +31,24 @@
                     <div class="stat-value" id="totalViagens">0</div>
                 </div>
             </div>
-            <button id="btnFecharMes" class="btn btn-danger admin-only" style="width:100%;">Encerrar Mês Atual</button>
+            <button id="btnFecharMes" class="btn btn-danger admin-only" style="width:100%; border-radius:8px; padding:12px;">Encerrar Mês Atual</button>
         </section>
 
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+        <hr class="divider">
 
         <section>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h2 style="font-size: 1.2rem;">Saldos</h2>
-                <button id="btnNovaPessoa" class="btn btn-primary btn-sm admin-only">+ Pessoa</button>
+            <div class="section-header">
+                <h2>Saldos</h2>
+                <button id="btnNovaPessoa" class="btn btn-primary btn-sm admin-only" style="width:auto;">+ Pessoa</button>
             </div>
             <div class="table-responsive">
                 <table class="table" id="tabelaPessoas">
                     <thead>
                         <tr>
-                            <th>NOME</th>
-                            <th class="text-right">DÍVIDA</th>
-                            <th class="text-right">CRÉDITO</th>
-                            <th class="text-right">SALDO</th>
+                            <th>Nome</th>
+                            <th class="text-right">Dívida</th>
+                            <th class="text-right">Crédito</th>
+                            <th class="text-right">Saldo</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -56,21 +56,21 @@
             </div>
         </section>
 
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+        <hr class="divider">
 
         <section>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h2 style="font-size: 1.2rem;">Viagens</h2>
-                <button id="btnNovaViagem" class="btn btn-primary btn-sm">+ Viagem</button>
+            <div class="section-header">
+                <h2>Viagens</h2>
+                <button id="btnNovaViagem" class="btn btn-primary btn-sm" style="width:auto;">+ Viagem</button>
             </div>
             <div class="table-responsive">
                 <table class="table" id="tabelaViagens">
                     <thead>
                         <tr>
-                            <th>DATA</th>
-                            <th>MOTORISTA</th>
-                            <th class="text-right">TOTAL</th>
-                            <th class="admin-only">AÇÕES</th>
+                            <th>Data</th>
+                            <th>Mot.</th>
+                            <th class="text-right">Total</th>
+                            <th class="admin-only" style="text-align:center;">Ações</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -79,29 +79,88 @@
         </section>
     </main>
 
-    <div id="modalAdmin" class="modal hidden"><div class="modal-content"><div class="modal-header"><h3>⚙️ Configurações</h3><button class="modal-close">&times;</button></div><div class="modal-body"><div class="form-group"><label>Valor Padrão (R$)</label><input type="number" id="configValorPadrao" class="form-control" step="0.5"><button id="btnSalvarConfig" class="btn btn-primary" style="width:100%; margin-top:10px;">Salvar Valor</button></div><hr><h4 style="margin-top:10px;">Usuários</h4><div id="listaUsuariosAdmin"></div></div></div></div>
-    
     <div id="modalViagem" class="modal hidden">
         <div class="modal-content">
-            <div class="modal-header"><h3>Nova Viagem</h3><button class="modal-close">&times;</button></div>
+            <div class="modal-header">
+                <h3>Nova Viagem</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            
             <div class="modal-body">
                 <input type="hidden" id="viagemId">
-                <div class="form-group"><label>Data</label><input type="date" id="viagemData" class="form-control"></div>
-                <div class="form-group"><label>Motorista</label><select id="viagemMotorista" class="form-control"></select></div>
+                
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="viagemData" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>Motorista</label>
+                    <select id="viagemMotorista" class="form-control"></select>
+                </div>
+                
                 <div class="form-group">
                     <label>Valor Unitário</label>
-                    <div class="moeda-input-group"><span>R$</span><input type="number" id="viagemValorUnit" disabled></div>
+                    <div class="moeda-input-group">
+                        <span>R$</span>
+                        <input type="number" id="viagemValorUnit" disabled>
+                    </div>
                 </div>
-                <div class="form-group"><label>Passageiros</label><div id="listaPassageiros" class="checkbox-list"></div></div>
+                
+                <div class="form-group">
+                    <label>Passageiros</label>
+                    <div id="listaPassageiros" class="checkbox-list"></div>
+                </div>
             </div>
-            <div class="modal-footer"><button id="btnSalvarViagem" class="btn btn-primary" style="width:100%">Salvar</button></div>
+            
+            <div class="modal-footer">
+                <button id="btnSalvarViagem" class="btn btn-primary">Salvar Viagem</button>
+            </div>
         </div>
     </div>
 
-    <div id="modalPessoa" class="modal hidden"><div class="modal-content"><div class="modal-header"><h3>Nova Pessoa</h3><button class="modal-close">&times;</button></div><div class="modal-body"><div class="form-group"><label>Nome</label><input type="text" id="pessoaNome" class="form-control"></div></div><div class="modal-footer"><button id="btnSalvarPessoa" class="btn btn-primary" style="width:100%">Salvar</button></div></div></div>
+    <div id="modalAdmin" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Configurações</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Valor Padrão (R$)</label>
+                    <input type="number" id="configValorPadrao" class="form-control" step="0.5">
+                </div>
+                <button id="btnSalvarConfig" class="btn btn-primary">Salvar Valor</button>
+                
+                <div class="divider"></div>
+                
+                <h4 style="margin-bottom:10px;">Gerenciar Usuários</h4>
+                <div id="listaUsuariosAdmin" style="border:1px solid #eee; border-radius:8px; overflow:hidden;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalPessoa" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Pessoa</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="pessoaNome" class="form-control" placeholder="Ex: João">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSalvarPessoa" class="btn btn-primary">Cadastrar</button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/db-config.js"></script>
     <script src="js/app.js"></script>
 </body>
-</html>
+    </html>
+    
