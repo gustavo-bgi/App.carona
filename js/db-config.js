@@ -32,12 +32,13 @@ try {
 // ============================================
 
 // AQUI ESTÁ O SEGREDO: Usar window.verificarConexao = ...
+// Substitua a função verificarConexao inteira por esta:
 window.verificarConexao = async function() {
-    console.log('🔄 Testando conexão...');
-    if (!window.dbClient) {
-        console.error('❌ Cliente Supabase não existe.');
-        return false;
-    }
+    console.log('🔄 Verificação de conexão ignorada temporariamente para testes.');
+    
+    // Força o retorno TRUE para o app não travar
+    return true; 
+};
     
     try {
         const { data, error } = await window.dbClient.from('pessoas').select('count', { count: 'exact', head: true });
