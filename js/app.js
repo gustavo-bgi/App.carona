@@ -1,5 +1,5 @@
 const appState = {
-    config: { mes_atual: 2, ano_atual: 2026, valor_padrao: 5 },
+    config: { mes_atual: 2, ano_atual: 2026, valor_padrao: 8 },
     filtroMes: 2, filtroAno: 2026,
     pessoas: [], viagens: [], saldos: [],
     isAdmin: localStorage.getItem('modoAdmin') === 'true'
@@ -22,8 +22,10 @@ async function carregarDados() {
         const { data: p } = await window.pessoasDB.listar();
         const { data: v } = await window.viagensDB.listar(appState.filtroMes, appState.filtroAno);
         const { data: s } = await window.saldosDB.listarAtuais();
+        
         appState.pessoas = p || [];
         appState.viagens = v || [];
+        
         appState.saldos = s.map(pessoa => {
             let pag = 0; let rec = 0;
             appState.viagens.forEach(via => {
@@ -67,34 +69,55 @@ function renderizar() {
         tbV.appendChild(tr);
     });
     popularSelect();
+    document.body.classList.toggle('modo-admin-ativo', appState.isAdmin);
+}
+
+function popularSelect() {
+    const sel = document.getElementById('mesSelecionado');
+    const valorAtual = `${appState.filtroMes}-${appState.filtroAno}`;
+    sel.innerHTML = '';
+    
+    let m = appState.config.mes_atual;
+    let a = appState.config.ano_atual;
+
+    // Gerar apenas o mês atual e meses anteriores até Fevereiro/2026
+    while (a > 2026 || (a === 2026 && m >= 2)) {
+        const opt = new Option(`${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`, `${m}-${a}`);
+        sel.add(opt);
+        
+        m--;
+        if (m < 1) { m = 12; a--; }
+        if (sel.options.length > 12) break; // Limite de segurança
+    }
+    sel.value = valorAtual;
 }
 
 function configurarInterface() {
     document.getElementById('btnNovaViagem').onclick = () => window.abrirModalViagem();
-    document.getElementById('viagemMotorista').onchange = (e) => {
-        const motId = e.target.value;
-        document.querySelectorAll('.chk-pass').forEach(chk => {
-            if(chk.value === motId) { chk.checked = false; chk.disabled = true; chk.parentElement.style.opacity="0.3"; }
-            else { chk.disabled = false; chk.parentElement.style.opacity="1"; }
-        });
+    document.getElementById('btnToggleAdmin').onclick = () => {
+        appState.isAdmin = !appState.isAdmin;
+        localStorage.setItem('modoAdmin', appState.isAdmin);
+        renderizar();
     };
+    document.querySelectorAll('.modal-close').forEach(b => b.onclick = () => document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden')));
     document.getElementById('btnSalvarViagem').onclick = salvarViagem;
     document.getElementById('btnNovaPessoa').onclick = () => document.getElementById('modalPessoa').classList.remove('hidden');
     document.getElementById('btnSalvarPessoa').onclick = salvarPessoa;
     document.getElementById('btnAdminPanel').onclick = abrirModalAdmin;
     document.getElementById('btnSalvarConfig').onclick = salvarConfig;
-    document.querySelectorAll('.modal-close').forEach(b => b.onclick = () => document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden')));
-    document.getElementById('btnToggleAdmin').onclick = () => { appState.isAdmin = !appState.isAdmin; localStorage.setItem('modoAdmin', appState.isAdmin); renderizar(); };
     document.getElementById('btnFecharMes').onclick = fecharMes;
-    document.getElementById('mesSelecionado').onchange = (e) => { const [m, a] = e.target.value.split('-'); appState.filtroMes = parseInt(m); appState.filtroAno = parseInt(a); carregarDados(); };
+    document.getElementById('mesSelecionado').onchange = (e) => {
+        const [m, a] = e.target.value.split('-');
+        appState.filtroMes = parseInt(m); appState.filtroAno = parseInt(a);
+        carregarDados();
+    };
 }
 
 window.abrirModalViagem = (id = null) => {
     document.getElementById('viagemId').value = id || '';
     const inputValor = document.getElementById('viagemValorUnit');
-    inputValor.value = parseFloat(appState.config.valor_padrao).toFixed(2);
-    inputValor.disabled = true;
-
+    inputValor.value = appState.config.valor_padrao;
+    
     const selMot = document.getElementById('viagemMotorista');
     selMot.innerHTML = '<option value="">Motorista...</option>';
     appState.pessoas.filter(p=>p.ativo).forEach(p => selMot.add(new Option(p.nome, p.id)));
@@ -125,7 +148,6 @@ async function salvarViagem() {
     const checks = document.querySelectorAll('.chk-pass:checked');
 
     if(!data || !motorista_id || checks.length === 0) return alert('Preencha tudo!');
-    if(!id && appState.viagens.some(v => v.data === data)) return alert('Já existe uma viagem neste dia!');
 
     try {
         mostrarLoading(true);
@@ -151,7 +173,7 @@ async function salvarConfig() {
     if(!val) return;
     await window.configDB.atualizar({ valor_padrao: val });
     appState.config.valor_padrao = val;
-    alert('Salvo!');
+    alert('Valor salvo!');
     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
 }
 
@@ -164,20 +186,9 @@ function abrirModalAdmin() {
     document.getElementById('modalAdmin').classList.remove('hidden');
 }
 
-function popularSelect() {
-    const sel = document.getElementById('mesSelecionado'); const v = `${appState.filtroMes}-${appState.filtroAno}`;
-    sel.innerHTML = ''; let m = appState.config.mes_atual, a = appState.config.ano_atual;
-    for(let i=0; i<12; i++) {
-        if(a < 2026 || (a === 2026 && m < 2)) break;
-        sel.add(new Option(`${String(m).padStart(2,'0')}/${a}${i===0?' (Aberto)':''}`, `${m}-${a}`));
-        if(--m < 1) { m=12; a--; }
-    }
-    sel.value = v;
-}
-
 async function fecharMes() {
     if(!confirm("Fechar mês?")) return;
-    let nM = appState.config.mes_atual + 1, nA = appState.config.ano_atual;
+    let nM = appState.config.mes_atual + 1; let nA = appState.config.ano_atual;
     if(nM > 12) { nM = 1; nA++; }
     await window.configDB.atualizar({ mes_atual: nM, ano_atual: nA });
     location.reload();
