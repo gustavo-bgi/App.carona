@@ -4,19 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Caronas</title>
-    <link rel="stylesheet" href="css/style.css?v=3">
+    <link rel="stylesheet" href="css/style.css?v=5">
     <style>
-        /* Estilos do Modo Admin */
+        /* Estilos específicos de visibilidade do Admin */
         .admin-only { display: none !important; }
-        body.modo-admin-ativo .admin-only { display: inline-block !important; }
-        body.modo-admin-ativo .section-header h2::after { content: ' 🔧'; font-size: 0.8rem; }
+        body.modo-admin-ativo .admin-only { display: inline-flex !important; }
+        
+        /* Ajuste do Título no modo Admin */
+        body.modo-admin-ativo .section-header h2::after { 
+            content: ' 🔧'; 
+            font-size: 0.8rem; 
+            vertical-align: middle;
+        }
         
         /* Botão Cadeado */
-        .btn-lock { background: none; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.4; transition: 0.3s; }
+        .btn-lock { 
+            background: none; border: none; font-size: 1.2rem; cursor: pointer; 
+            opacity: 0.4; transition: 0.3s; 
+        }
         body.modo-admin-ativo .btn-lock { opacity: 1; transform: scale(1.1); }
         
-        /* Card Fechar Mês */
-        .card-fechar { border: 1px solid #fca5a5; background: #fef2f2; cursor: pointer; transition: 0.2s; }
+        /* Card de Fechar Mês */
+        .card-fechar { 
+            border: 1px solid #fca5a5; background: #fef2f2; cursor: pointer; transition: 0.2s; 
+        }
         .card-fechar:hover { background: #fee2e2; }
     </style>
 </head>
@@ -27,7 +38,7 @@
         <div class="container">
             <div style="display: flex; align-items: center; gap: 15px;">
                 <h1>🚗 Caronas</h1>
-                <button id="btnToggleAdmin" class="btn-lock" title="Modo Admin">🔒</button>
+                <button id="btnToggleAdmin" class="btn-lock" title="Alternar Modo Administrador">🔒</button>
             </div>
             
             <div class="header-actions">
@@ -51,7 +62,10 @@
                 </div>
                 <div class="stat-card card-fechar admin-only" id="btnFecharMes">
                     <div class="stat-icon">🏁</div>
-                    <div><div class="stat-label text-danger">Ação Admin</div><div class="stat-value" style="font-size:1rem; color:#dc2626">Fechar Mês &rarr;</div></div>
+                    <div>
+                        <div class="stat-label text-danger">Ação Admin</div>
+                        <div class="stat-value" style="font-size:1rem; color:#dc2626">Fechar Mês &rarr;</div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -111,7 +125,7 @@
                 <div class="form-group">
                     <label>Valor Padrão da Carona (R$)</label>
                     <div style="display: flex; gap: 10px;">
-                        <input type="number" id="configValorPadrao" class="form-control">
+                        <input type="number" id="configValorPadrao" class="form-control" step="0.50">
                         <button id="btnSalvarConfig" class="btn btn-primary">Salvar</button>
                     </div>
                 </div>
@@ -158,8 +172,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/utils.js?v=3"></script>
-    <script src="js/db-config.js?v=3"></script>
-    <script src="js/app.js?v=3"></script>
+    <script src="js/utils.js?v=5"></script>
+    <script src="js/db-config.js?v=5"></script>
+    <script src="js/app.js?v=5"></script>
 </body>
 </html>
