@@ -27,7 +27,6 @@ window.viagensDB = {
         let pM = parseInt(mes) + 1; let pA = ano;
         if (pM > 12) { pM = 1; pA++; }
         const f = `${pA}-${String(pM).padStart(2,'0')}-01`;
-
         return await dbClient.from('viagens')
             .select('*, motorista:pessoas!motorista_id(nome), passageiros:viagens_passageiros(pessoa_id, valor, pessoa:pessoas(nome))')
             .gte('data', i).lt('data', f).order('data', {ascending: false});
@@ -36,6 +35,13 @@ window.viagensDB = {
         const { data: v, error: ev } = await dbClient.from('viagens').insert(viagem).select().single();
         if(ev) throw ev;
         const passFinal = passageiros.map(p => ({ ...p, viagem_id: v.id }));
+        return await dbClient.from('viagens_passageiros').insert(passFinal);
+    },
+    async atualizar(id, viagem, passageiros) {
+        const { error: ev } = await dbClient.from('viagens').update(viagem).eq('id', id);
+        if(ev) throw ev;
+        await dbClient.from('viagens_passageiros').delete().eq('viagem_id', id);
+        const passFinal = passageiros.map(p => ({ ...p, viagem_id: id }));
         return await dbClient.from('viagens_passageiros').insert(passFinal);
     },
     async excluir(id) { return await dbClient.from('viagens').delete().eq('id', id); }
