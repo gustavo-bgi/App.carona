@@ -13,10 +13,12 @@
 
     <header class="header">
         <div class="container">
-            <h1>🚗 Controle de Caronas</h1>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h1>🚗 Caronas</h1>
+                <button id="btnConfig" class="btn btn-secondary btn-sm" title="Configurar Valor Padrão">⚙️</button>
+            </div>
             <div class="header-actions">
-                <select id="mesSelecionado" class="month-selector">
-                    </select>
+                <select id="mesSelecionado" class="month-selector"></select>
             </div>
         </div>
     </header>
@@ -24,63 +26,44 @@
     <main class="container">
         
         <section class="dashboard">
-            <h2>Dashboard - <span id="mesAtual">---</span></h2>
-            
+            <h2>Resumo - <span id="mesAtual">---</span></h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon">📊</div>
+                    <div class="stat-icon">🗓️</div>
                     <div class="stat-content">
-                        <div class="stat-label">Total de Viagens</div>
+                        <div class="stat-label">Viagens no Mês</div>
                         <div class="stat-value" id="totalViagens">0</div>
                     </div>
                 </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">🛣️</div>
-                    <div class="stat-content">
-                        <div class="stat-label">Km Total</div>
-                        <div class="stat-value" id="kmTotal">0 km</div>
-                    </div>
-                </div>
-                
                 <div class="stat-card">
                     <div class="stat-icon">💰</div>
                     <div class="stat-content">
-                        <div class="stat-label">Custo Total</div>
+                        <div class="stat-label">Movimentado (Total)</div>
                         <div class="stat-value" id="custoTotal">R$ 0,00</div>
                     </div>
                 </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">🏷️</div>
-                    <div class="stat-content">
-                        <div class="stat-label">Custo Médio/Km</div>
-                        <div class="stat-value" id="custoMedio">R$ 0,00</div>
-                    </div>
                 </div>
-            </div>
         </section>
 
         <hr class="divider">
 
         <section class="section-pessoas">
             <div class="section-header">
-                <h2>Pessoas / Saldos</h2>
-                <button id="btnNovaPessoa" class="btn btn-primary btn-sm">+ Nova Pessoa</button>
+                <h2>Extrato por Pessoa (Geral)</h2>
+                <button id="btnNovaPessoa" class="btn btn-primary btn-sm">+ Pessoa</button>
             </div>
-            
             <div class="table-responsive">
                 <table class="table" id="tabelaPessoas">
                     <thead>
                         <tr>
                             <th>Nome</th>
-                            <th>Status</th>
-                            <th>Saldo Devedor</th>
+                            <th class="text-right" style="color: var(--danger)">A Pagar (Deve)</th>
+                            <th class="text-right" style="color: var(--success)">A Receber (Motorista)</th>
+                            <th class="text-right">Saldo Líquido</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
         </section>
@@ -90,50 +73,41 @@
         <section class="section-viagens">
             <div class="section-header">
                 <h2>Histórico de Viagens</h2>
-                <div class="actions">
-                    <button id="btnNovaViagem" class="btn btn-primary btn-sm">+ Nova Viagem</button>
-                </div>
+                <button id="btnNovaViagem" class="btn btn-primary btn-sm">+ Nova Viagem</button>
             </div>
-            
             <div class="table-responsive">
                 <table class="table" id="tabelaViagens">
                     <thead>
                         <tr>
                             <th>Data</th>
-                            <th>Obs</th>
                             <th>Motorista</th>
                             <th>Passageiros</th>
-                            <th>Valor Total</th>
+                            <th>Valor Unit.</th>
+                            <th>Total (Motorista)</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
         </section>
     </main>
 
-    <div id="modalPessoa" class="modal hidden">
-        <div class="modal-content">
+    <div id="modalConfig" class="modal hidden">
+        <div class="modal-content modal-small">
             <div class="modal-header">
-                <h3>Gerenciar Pessoa</h3>
-                <button class="modal-close" data-modal="modalPessoa">&times;</button>
+                <h3>Configurações</h3>
+                <button class="modal-close" data-modal="modalConfig">&times;</button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="pessoaId">
                 <div class="form-group">
-                    <label for="pessoaNome">Nome</label>
-                    <input type="text" id="pessoaNome" class="form-control" required placeholder="Nome da pessoa">
-                </div>
-                <div class="form-group checkbox-group">
-                    <input type="checkbox" id="pessoaAtivo" checked>
-                    <label for="pessoaAtivo">Ativo (aparece nas novas viagens)</label>
+                    <label>Valor Padrão da Carona (R$)</label>
+                    <input type="number" id="configValorPadrao" class="form-control" step="0.50" min="0">
+                    <small class="text-muted">Este valor virá preenchido automaticamente ao criar nova viagem.</small>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-modal="modalPessoa">Cancelar</button>
-                <button id="btnSalvarPessoa" class="btn btn-primary">Salvar</button>
+                <button id="btnSalvarConfig" class="btn btn-primary">Salvar</button>
             </div>
         </div>
     </div>
@@ -141,7 +115,7 @@
     <div id="modalViagem" class="modal hidden">
         <div class="modal-content modal-lg">
             <div class="modal-header">
-                <h3>Gerenciar Viagem</h3>
+                <h3>Nova Viagem</h3>
                 <button class="modal-close" data-modal="modalViagem">&times;</button>
             </div>
             <div class="modal-body">
@@ -150,48 +124,54 @@
                 <div class="row">
                     <div class="col">
                         <div class="form-group">
-                            <label for="viagemData">Data</label>
+                            <label>Data</label>
                             <input type="date" id="viagemData" class="form-control" required>
                         </div>
                     </div>
                     <div class="col">
                         <div class="form-group">
-                            <label for="viagemMotorista">Motorista</label>
-                            <select id="viagemMotorista" class="form-control" required>
-                                </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col">
-                        <div class="form-group">
-                            <label for="viagemKm">Quilometragem (Km)</label>
-                            <input type="number" id="viagemKm" class="form-control" step="0.1" min="0">
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="form-group">
-                            <label for="viagemValorTotal">Valor Total (R$)</label>
-                            <input type="number" id="viagemValorTotal" class="form-control" step="0.01" min="0" required>
+                            <label>Motorista (Quem recebe)</label>
+                            <select id="viagemMotorista" class="form-control" required></select>
                         </div>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Passageiros (Quem vai dividir a conta?)</label>
-                    <div id="listaPassageirosCheckboxes" class="checkbox-list">
-                        </div>
+                    <label>Valor por Pessoa (R$)</label>
+                    <input type="number" id="viagemValorPorPessoa" class="form-control" step="0.50" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="viagemObservacao">Observação</label>
-                    <textarea id="viagemObservacao" class="form-control" rows="2"></textarea>
+                    <label>Passageiros (Quem paga)</label>
+                    <div id="listaPassageirosCheckboxes" class="checkbox-list"></div>
+                    <div id="resumoViagem" class="alert alert-info mt-2">
+                        Selecione os passageiros para ver o total.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Observação</label>
+                    <textarea id="viagemObservacao" class="form-control" rows="1"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-modal="modalViagem">Cancelar</button>
                 <button id="btnSalvarViagem" class="btn btn-primary">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalPessoa" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Pessoa</h3><button class="modal-close" data-modal="modalPessoa">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="pessoaId">
+                <div class="form-group"><label>Nome</label><input type="text" id="pessoaNome" class="form-control"></div>
+                <div class="checkbox-group"><input type="checkbox" id="pessoaAtivo" checked><label>Ativo</label></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-modal="modalPessoa">Cancelar</button>
+                <button id="btnSalvarPessoa" class="btn btn-primary">Salvar</button>
             </div>
         </div>
     </div>
