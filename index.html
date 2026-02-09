@@ -7,30 +7,24 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="spinner"></div>
     </div>
 
-    <!-- Header -->
     <header class="header">
         <div class="container">
             <h1>🚗 Controle de Caronas</h1>
             <div class="header-actions">
                 <select id="mesSelecionado" class="month-selector">
-                    <!-- Preenchido via JS -->
-                </select>
-                <button id="btnFecharMes" class="btn btn-secondary">Fechar Mês</button>
+                    </select>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="container">
         
-        <!-- Dashboard Section -->
         <section class="dashboard">
-            <h2>Dashboard - <span id="mesAtual"></span></h2>
+            <h2>Dashboard - <span id="mesAtual">---</span></h2>
             
             <div class="stats-grid">
                 <div class="stat-card">
@@ -42,100 +36,99 @@
                 </div>
                 
                 <div class="stat-card">
-                    <div class="stat-icon">💰</div>
+                    <div class="stat-icon">🛣️</div>
                     <div class="stat-content">
-                        <div class="stat-label">Total Movimentado</div>
-                        <div class="stat-value" id="totalMovimentado">R$ 0,00</div>
+                        <div class="stat-label">Km Total</div>
+                        <div class="stat-value" id="kmTotal">0 km</div>
                     </div>
                 </div>
                 
                 <div class="stat-card">
-                    <div class="stat-icon">👥</div>
+                    <div class="stat-icon">💰</div>
                     <div class="stat-content">
-                        <div class="stat-label">Pessoas Ativas</div>
-                        <div class="stat-value" id="pessoasAtivas">0</div>
+                        <div class="stat-label">Custo Total</div>
+                        <div class="stat-value" id="custoTotal">R$ 0,00</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">🏷️</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Custo Médio/Km</div>
+                        <div class="stat-value" id="custoMedio">R$ 0,00</div>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Saldos Section -->
-            <div class="saldos-section">
-                <h3>Saldos Atuais</h3>
-                <div id="saldosContainer" class="saldos-list">
-                    <!-- Preenchido via JS -->
+        <hr class="divider">
+
+        <section class="section-pessoas">
+            <div class="section-header">
+                <h2>Pessoas / Saldos</h2>
+                <button id="btnNovaPessoa" class="btn btn-primary btn-sm">+ Nova Pessoa</button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table" id="tabelaPessoas">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Status</th>
+                            <th>Saldo Devedor</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <hr class="divider">
+
+        <section class="section-viagens">
+            <div class="section-header">
+                <h2>Histórico de Viagens</h2>
+                <div class="actions">
+                    <button id="btnNovaViagem" class="btn btn-primary btn-sm">+ Nova Viagem</button>
                 </div>
             </div>
-        </section>
-
-        <!-- Tabs Navigation -->
-        <nav class="tabs">
-            <button class="tab-btn active" data-tab="viagens">Viagens</button>
-            <button class="tab-btn" data-tab="pessoas">Pessoas</button>
-            <button class="tab-btn" data-tab="relatorios">Relatórios</button>
-        </nav>
-
-        <!-- Tab: Viagens -->
-        <section id="tabViagens" class="tab-content active">
-            <div class="section-header">
-                <h2>Viagens</h2>
-                <button id="btnNovaViagem" class="btn btn-primary">+ Nova Viagem</button>
-            </div>
-
-            <div id="viagensLista" class="viagens-lista">
-                <!-- Preenchido via JS -->
+            
+            <div class="table-responsive">
+                <table class="table" id="tabelaViagens">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Obs</th>
+                            <th>Motorista</th>
+                            <th>Passageiros</th>
+                            <th>Valor Total</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
             </div>
         </section>
-
-        <!-- Tab: Pessoas -->
-        <section id="tabPessoas" class="tab-content">
-            <div class="section-header">
-                <h2>Pessoas</h2>
-                <button id="btnNovaPessoa" class="btn btn-primary">+ Nova Pessoa</button>
-            </div>
-
-            <div id="pessoasLista" class="pessoas-lista">
-                <!-- Preenchido via JS -->
-            </div>
-        </section>
-
-        <!-- Tab: Relatórios -->
-        <section id="tabRelatorios" class="tab-content">
-            <div class="section-header">
-                <h2>Relatórios Mensais</h2>
-            </div>
-
-            <div class="relatorio-filtros">
-                <select id="relatorioMes" class="input">
-                    <!-- Preenchido via JS -->
-                </select>
-                <button id="btnGerarRelatorio" class="btn btn-primary">Gerar Relatório</button>
-            </div>
-
-            <div id="relatorioContainer" class="relatorio-container">
-                <!-- Preenchido via JS -->
-            </div>
-        </section>
-
     </main>
 
-    <!-- Modal: Nova/Editar Pessoa -->
     <div id="modalPessoa" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalPessoaTitulo">Nova Pessoa</h3>
+                <h3>Gerenciar Pessoa</h3>
                 <button class="modal-close" data-modal="modalPessoa">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="pessoaId">
                 <div class="form-group">
                     <label for="pessoaNome">Nome</label>
-                    <input type="text" id="pessoaNome" class="input" placeholder="Digite o nome" required>
+                    <input type="text" id="pessoaNome" class="form-control" required placeholder="Nome da pessoa">
                 </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="pessoaAtiva" checked>
-                        Ativo
-                    </label>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="pessoaAtivo" checked>
+                    <label for="pessoaAtivo">Ativo (aparece nas novas viagens)</label>
                 </div>
             </div>
             <div class="modal-footer">
@@ -145,50 +138,55 @@
         </div>
     </div>
 
-    <!-- Modal: Nova/Editar Viagem -->
     <div id="modalViagem" class="modal hidden">
-        <div class="modal-content modal-large">
+        <div class="modal-content modal-lg">
             <div class="modal-header">
-                <h3 id="modalViagemTitulo">Nova Viagem</h3>
+                <h3>Gerenciar Viagem</h3>
                 <button class="modal-close" data-modal="modalViagem">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="viagemId">
                 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="viagemData">Data</label>
-                        <input type="date" id="viagemData" class="input" required>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="viagemData">Data</label>
+                            <input type="date" id="viagemData" class="form-control" required>
+                        </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="viagemMotorista">Motorista</label>
-                        <select id="viagemMotorista" class="input" required>
-                            <option value="">Selecione...</option>
-                        </select>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="viagemMotorista">Motorista</label>
+                            <select id="viagemMotorista" class="form-control" required>
+                                </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="viagemKm">Quilometragem (Km)</label>
+                            <input type="number" id="viagemKm" class="form-control" step="0.1" min="0">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="viagemValorTotal">Valor Total (R$)</label>
+                            <input type="number" id="viagemValorTotal" class="form-control" step="0.01" min="0" required>
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="viagemValorTotal">Valor Total da Corrida</label>
-                    <input type="number" id="viagemValorTotal" class="input" step="0.01" min="0" placeholder="0,00" required>
+                    <label>Passageiros (Quem vai dividir a conta?)</label>
+                    <div id="listaPassageirosCheckboxes" class="checkbox-list">
+                        </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Passageiros</label>
-                    <div id="passageirosContainer" class="passageiros-container">
-                        <!-- Preenchido via JS -->
-                    </div>
-                    <button type="button" id="btnAddPassageiro" class="btn btn-secondary btn-sm">+ Adicionar Passageiro</button>
-                </div>
-
-                <div class="form-group">
-                    <label for="viagemObservacao">Observação (opcional)</label>
-                    <textarea id="viagemObservacao" class="input" rows="3" placeholder="Ex: Pedágio incluído"></textarea>
-                </div>
-
-                <div class="alert alert-info">
-                    <strong>💡 Dica:</strong> O valor será dividido automaticamente entre os passageiros selecionados.
+                    <label for="viagemObservacao">Observação</label>
+                    <textarea id="viagemObservacao" class="form-control" rows="2"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -198,27 +196,9 @@
         </div>
     </div>
 
-    <!-- Modal: Confirmação -->
-    <div id="modalConfirmacao" class="modal hidden">
-        <div class="modal-content modal-small">
-            <div class="modal-header">
-                <h3 id="modalConfirmacaoTitulo">Confirmar</h3>
-                <button class="modal-close" data-modal="modalConfirmacao">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p id="modalConfirmacaoMensagem"></p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-modal="modalConfirmacao">Cancelar</button>
-                <button id="btnConfirmarAcao" class="btn btn-danger">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/db-config.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/db-config.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
