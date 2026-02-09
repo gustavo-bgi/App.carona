@@ -1,29 +1,195 @@
-/* Ajuste específico para o alinhamento do Valor Unitário */
+/* ============================================
+   RESET E ESTRUTURA BASE
+   ============================================ */
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+}
+
+body { 
+    background-color: #f4f7f9; 
+    color: #333; 
+    line-height: 1.6; 
+    -webkit-tap-highlight-color: transparent;
+}
+
+.container { 
+    max-width: 800px; 
+    margin: 0 auto; 
+    padding: 10px 15px; 
+}
+
+.hidden { display: none !important; }
+
+/* ============================================
+   HEADER E NAVEGAÇÃO
+   ============================================ */
+.header { 
+    background: #fff; 
+    border-bottom: 1px solid #ddd; 
+    position: sticky; 
+    top: 0; 
+    z-index: 100; 
+}
+
+.header .container { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+
+.month-selector { 
+    padding: 6px; 
+    border-radius: 5px; 
+    border: 1px solid #ccc; 
+    font-size: 0.9rem; 
+    background: #fff;
+}
+
+/* ============================================
+   DASHBOARD E CARDS
+   ============================================ */
+.stat-card { 
+    background: #fff; 
+    padding: 15px; 
+    border-radius: 10px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+}
+
+.stat-icon { font-size: 2rem; }
+.stat-label { font-size: 0.8rem; color: #666; }
+.stat-value { font-size: 1.5rem; font-weight: bold; }
+
+/* ============================================
+   TABELAS RESPONSIVAS (CORREÇÃO PARA CELULAR)
+   ============================================ */
+.table-responsive { 
+    width: 100%; 
+    overflow-x: auto; 
+    -webkit-overflow-scrolling: touch; 
+    background: #fff; 
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 0.85rem; /* Fonte compacta para caber colunas */
+}
+
+.table th { 
+    background: #f8f9fa; 
+    color: #666; 
+    font-size: 0.75rem; 
+    text-transform: uppercase; 
+    padding: 12px 5px; 
+    border-bottom: 2px solid #eee; 
+}
+
+.table td { 
+    padding: 12px 5px; 
+    border-bottom: 1px solid #eee; 
+    white-space: nowrap; /* Evita quebra de linha nos valores */
+}
+
+/* Limita o nome para não empurrar as colunas de valor */
+.table td:first-child { 
+    max-width: 90px; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.text-right { text-align: right; }
+.text-danger { color: #d9534f; }
+.text-success { color: #28a745; }
+.font-bold { font-weight: bold; }
+
+/* ============================================
+   CORREÇÃO DO CAMPO DE VALOR (POPUP)
+   ============================================ */
 .moeda-input-group {
     display: flex;
-    align-items: center; /* Centraliza verticalmente R$ e o número */
-    background: #eee;
+    align-items: center; /* Alinha o R$ verticalmente ao centro */
     border: 1px solid #ddd;
     border-radius: 6px;
-    padding: 0 12px; /* Espaçamento interno fixo */
-    height: 45px; /* Altura fixa para evitar desalinhamento no mobile */
+    background: #f9f9f9;
+    padding: 0 12px;
+    height: 48px; /* Altura fixa para toque fácil no mobile */
 }
 
 .moeda-input-group span {
     font-weight: bold;
     color: #555;
-    margin-right: 8px; /* Espaço entre R$ e o número */
-    line-height: 1; /* Evita que o texto suba ou desça */
+    margin-right: 8px; /* Espaço entre R$ e número */
+    font-size: 1rem;
+    line-height: 1;
 }
 
 .moeda-input-group input {
     border: none !important;
     background: transparent !important;
-    flex: 1; /* Ocupa o restante do espaço */
+    width: 100%;
     font-size: 1.1rem;
     color: #333;
     outline: none;
     padding: 0 !important;
     margin: 0 !important;
-    height: 100%; /* Ocupa a altura total do container */
+    height: 100%;
 }
+
+/* ============================================
+   MODAIS E BOTÕES
+   ============================================ */
+.modal { 
+    position: fixed; 
+    top: 0; left: 0; 
+    width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.6); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 1000; 
+    padding: 10px;
+}
+
+.modal-content { 
+    background: #fff; 
+    padding: 20px; 
+    border-radius: 12px; 
+    width: 100%; 
+    max-width: 400px; 
+}
+
+.btn { 
+    padding: 10px 15px; 
+    border-radius: 8px; 
+    border: none; 
+    cursor: pointer; 
+    font-weight: bold; 
+    transition: 0.2s;
+}
+
+.btn-primary { background: #2b6cb0; color: #fff; }
+.btn-danger { background: #c53030; color: #fff; }
+.btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+
+/* MODO ADMIN */
+.admin-only { display: none !important; }
+body.modo-admin-ativo .admin-only { display: inline-flex !important; }
+
+.btn-lock { 
+    background: none; 
+    border: none; 
+    font-size: 1.3rem; 
+    cursor: pointer; 
+    opacity: 0.3; 
+}
+body.modo-admin-ativo .btn-lock { opacity: 1; }
