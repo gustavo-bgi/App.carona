@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         appState.filtroAno = appState.config.ano_atual;
         configurarInterface();
         await carregarDados();
-    } catch(e) { console.error("Erro na inicialização:", e); }
+    } catch(e) { console.error("Erro ao iniciar:", e); }
 });
 
 async function carregarDados() {
@@ -72,27 +72,10 @@ function renderizar() {
     document.body.classList.toggle('modo-admin-ativo', appState.isAdmin);
 }
 
-function popularSelect() {
-    const sel = document.getElementById('mesSelecionado');
-    const valorAtual = `${appState.filtroMes}-${appState.filtroAno}`;
-    sel.innerHTML = '';
-    
-    let m = appState.config.mes_atual;
-    let a = appState.config.ano_atual;
-
-    // Gera o seletor de forma organizada parando em Fevereiro/2026
-    while (a > 2026 || (a === 2026 && m >= 2)) {
-        const texto = `${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`;
-        sel.add(new Option(texto, `${m}-${a}`));
-        m--; if (m < 1) { m = 12; a--; }
-    }
-    sel.value = valorAtual;
-}
-
 function configurarInterface() {
     document.getElementById('btnNovaViagem').onclick = () => window.abrirModalViagem();
     
-    // VALIDAÇÃO MOTORISTA
+    // TRAVA MOTORISTA
     document.getElementById('viagemMotorista').onchange = (e) => {
         const motId = e.target.value;
         document.querySelectorAll('.chk-pass').forEach(chk => {
@@ -111,10 +94,16 @@ function configurarInterface() {
     document.getElementById('btnSalvarViagem').onclick = salvarViagem;
     document.getElementById('btnNovaPessoa').onclick = () => document.getElementById('modalPessoa').classList.remove('hidden');
     document.getElementById('btnSalvarPessoa').onclick = salvarPessoa;
-    document.getElementById('btnAdminPanel').onclick = abrirModalAdmin;
+    document.getElementById('btnAdminPanel').onclick = () => {
+        document.getElementById('configValorPadrao').value = appState.config.valor_padrao;
+        const lista = document.getElementById('listaUsuariosAdmin'); lista.innerHTML = '';
+        appState.pessoas.forEach(p => {
+            lista.innerHTML += `<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee"><span>${p.nome}</span><button class="btn btn-sm ${p.ativo?'btn-danger':'btn-primary'}" onclick="window.toggleAtivo(${p.id},${p.ativo})">${p.ativo?'Inativar':'Ativar'}</button></div>`;
+        });
+        document.getElementById('modalAdmin').classList.remove('hidden');
+    };
     document.getElementById('btnSalvarConfig').onclick = salvarConfig;
     document.getElementById('btnFecharMes').onclick = fecharMes;
-    
     document.getElementById('mesSelecionado').onchange = (e) => {
         const [m, a] = e.target.value.split('-');
         appState.filtroMes = parseInt(m); appState.filtroAno = parseInt(a);
@@ -158,15 +147,6 @@ async function salvarViagem() {
     finally { mostrarLoading(false); }
 }
 
-function abrirModalAdmin() {
-    document.getElementById('configValorPadrao').value = appState.config.valor_padrao;
-    const lista = document.getElementById('listaUsuariosAdmin'); lista.innerHTML = '';
-    appState.pessoas.forEach(p => {
-        lista.innerHTML += `<div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee"><span>${p.nome}</span><button class="btn btn-sm ${p.ativo?'btn-danger':'btn-primary'}" onclick="window.toggleAtivo(${p.id},${p.ativo})">${p.ativo?'Inativar':'Ativar'}</button></div>`;
-    });
-    document.getElementById('modalAdmin').classList.remove('hidden');
-}
-
 async function salvarPessoa() {
     const nome = document.getElementById('pessoaNome').value;
     if(!nome) return;
@@ -182,6 +162,18 @@ async function salvarConfig() {
     appState.config.valor_padrao = val;
     alert('Salvo!');
     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+}
+
+function popularSelect() {
+    const sel = document.getElementById('mesSelecionado');
+    const v = `${appState.filtroMes}-${appState.filtroAno}`;
+    sel.innerHTML = '';
+    let m = appState.config.mes_atual; let a = appState.config.ano_atual;
+    while (a > 2026 || (a === 2026 && m >= 2)) {
+        sel.add(new Option(`${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`, `${m}-${a}`));
+        m--; if (m < 1) { m = 12; a--; }
+    }
+    sel.value = v;
 }
 
 async function fecharMes() {
