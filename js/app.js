@@ -16,6 +16,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) { console.error("Erro ao iniciar:", e); }
 });
 
+// --- FUNÇÃO NOVA: GARANTE DATA DO BRASIL ---
+function dataHojeBrasil() {
+    // O formato 'en-CA' retorna sempre YYYY-MM-DD, perfeito para inputs de data
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+
 async function carregarDados() {
     mostrarLoading(true);
     try {
@@ -58,11 +64,16 @@ function renderizar() {
     appState.viagens.forEach(v => {
         const tr = document.createElement('tr');
         const podeEditar = (appState.filtroMes === appState.config.mes_atual && appState.filtroAno === appState.config.ano_atual);
+        
+        // CORREÇÃO VISUAL DA DATA NA TABELA (Para não mostrar dia anterior)
+        const partesData = v.data.split('-'); // [2026, 02, 09]
+        const dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
+
         tr.innerHTML = `
-            <td>${new Date(v.data+'T00:00:00').toLocaleDateString('pt-BR')}</td>
+            <td>${dataFormatada}</td>
             <td>${v.motorista?.nome || '?'}</td>
             <td class="text-right">${fmtMoeda(v.valor_total)}</td>
-            <td class="admin-only">
+            <td class="admin-only" style="text-align:center;">
                 ${podeEditar ? `<button class="btn btn-secondary btn-sm" onclick="window.abrirModalViagem(${v.id})">✏️</button>` : ''}
                 <button class="btn btn-danger btn-sm" onclick="excluirViagem(${v.id})">🗑️</button>
             </td>`;
@@ -94,6 +105,8 @@ function configurarInterface() {
     document.getElementById('btnSalvarViagem').onclick = salvarViagem;
     document.getElementById('btnNovaPessoa').onclick = () => document.getElementById('modalPessoa').classList.remove('hidden');
     document.getElementById('btnSalvarPessoa').onclick = salvarPessoa;
+    
+    // BOTÃO ADMIN CORRIGIDO
     document.getElementById('btnAdminPanel').onclick = () => {
         document.getElementById('configValorPadrao').value = appState.config.valor_padrao;
         const lista = document.getElementById('listaUsuariosAdmin'); lista.innerHTML = '';
@@ -102,6 +115,7 @@ function configurarInterface() {
         });
         document.getElementById('modalAdmin').classList.remove('hidden');
     };
+    
     document.getElementById('btnSalvarConfig').onclick = salvarConfig;
     document.getElementById('btnFecharMes').onclick = fecharMes;
     document.getElementById('mesSelecionado').onchange = (e) => {
@@ -114,17 +128,29 @@ function configurarInterface() {
 window.abrirModalViagem = (id = null) => {
     document.getElementById('viagemId').value = id || '';
     document.getElementById('viagemValorUnit').value = appState.config.valor_padrao;
+    
     const selMot = document.getElementById('viagemMotorista');
     selMot.innerHTML = '<option value="">Motorista...</option>';
     appState.pessoas.filter(p=>p.ativo).forEach(p => selMot.add(new Option(p.nome, p.id)));
+    
     const divPass = document.getElementById('listaPassageiros'); divPass.innerHTML = '';
     appState.pessoas.filter(p=>p.ativo).forEach(p => {
-        divPass.innerHTML += `<label style="display:block; padding:8px;"><input type="checkbox" class="chk-pass" value="${p.id}"> ${p.nome}</label>`;
+        divPass.innerHTML += `<label style="display:flex; align-items:center; padding:10px; border-bottom:1px solid #eee;"><input type="checkbox" class="chk-pass" value="${p.id}" style="margin-right:10px; transform:scale(1.2);"> ${p.nome}</label>`;
     });
+
     if(id) {
         const v = appState.viagens.find(x => x.id == id);
-        if(v) { document.getElementById('viagemData').value = v.data; selMot.value = v.motorista_id; v.passageiros.forEach(p => { const chk = divPass.querySelector(`input[value="${p.pessoa_id}"]`); if(chk) chk.checked = true; }); }
-    } else { document.getElementById('viagemData').value = new Date().toISOString().split('T')[0]; }
+        if(v) { 
+            document.getElementById('viagemData').value = v.data; 
+            selMot.value = v.motorista_id; 
+            v.passageiros.forEach(p => { const chk = divPass.querySelector(`input[value="${p.pessoa_id}"]`); if(chk) chk.checked = true; }); 
+            // Dispara o evento para travar o motorista na edição
+            selMot.dispatchEvent(new Event('change'));
+        }
+    } else { 
+        // AQUI ESTÁ A CORREÇÃO DA DATA:
+        document.getElementById('viagemData').value = dataHojeBrasil(); 
+    }
     document.getElementById('modalViagem').classList.remove('hidden');
 };
 
@@ -134,13 +160,18 @@ async function salvarViagem() {
     const motorista_id = document.getElementById('viagemMotorista').value;
     const valorUnit = parseFloat(appState.config.valor_padrao);
     const checks = document.querySelectorAll('.chk-pass:checked');
+    
     if(!data || !motorista_id || checks.length === 0) return alert('Preencha tudo!');
+    
+    // Verificação de Data Duplicada
     if(!id && appState.viagens.some(v => v.data === data)) return alert('Já existe uma viagem neste dia!');
+    
     try {
         mostrarLoading(true);
         const pass = Array.from(checks).map(c => ({ pessoa_id: c.value, valor: valorUnit, pago: false }));
         if(id) await window.viagensDB.atualizar(id, { data, motorista_id, valor_total: valorUnit * checks.length }, pass);
         else await window.viagensDB.criar({ data, motorista_id, valor_total: valorUnit * checks.length }, pass);
+        
         document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
         await carregarDados();
     } catch(e) { alert("Erro ao salvar."); }
@@ -169,6 +200,7 @@ function popularSelect() {
     const v = `${appState.filtroMes}-${appState.filtroAno}`;
     sel.innerHTML = '';
     let m = appState.config.mes_atual; let a = appState.config.ano_atual;
+    // Lista apenas até Fev/2026
     while (a > 2026 || (a === 2026 && m >= 2)) {
         sel.add(new Option(`${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`, `${m}-${a}`));
         m--; if (m < 1) { m = 12; a--; }
@@ -188,4 +220,3 @@ window.toggleAtivo = async (id, status) => { await window.pessoasDB.atualizar(id
 window.excluirViagem = async (id) => { if(confirm('Excluir?')) { await window.viagensDB.excluir(id); await carregarDados(); }};
 const fmtMoeda = (v) => parseFloat(v).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 const mostrarLoading = (s) => { const el = document.getElementById('loadingOverlay'); if(el) el.classList.toggle('hidden', !s); };
-        
