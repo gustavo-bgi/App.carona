@@ -175,14 +175,46 @@
                     <thead>
                         <tr>
                             <th style="text-align: left;">DATA</th>
+                            <th style="text-align: left;">PASSAGEIROS</th>
                             <th style="text-align: left;">MOTORISTA</th>
-                            <th class="text-right">TOTAL</th> <th class="admin-only text-center">AÇÕES</th>
+                            <th class="text-right">TOTAL</th> 
+                            <th class="admin-only text-center">AÇÕES</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
         </section>
+
+        <hr class="divider">
+
+        <section id="relatorioDetalhado" style="margin-bottom: 25px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 style="margin:0; font-size:1.2rem;">📊 Extrato por Pessoa</h2>
+            </div>
+            <div class="form-group">
+                <select id="selectPessoaRelatorio" class="form-control" onchange="gerarRelatorioDetalhado()">
+                    <option value="">Selecione uma pessoa...</option>
+                </select>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">DATA</th>
+                            <th style="text-align: left;">MOTORISTA</th>
+                            <th class="text-right">VALOR</th>
+                            <th style="text-align: left;">OUTROS CARONAS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoRelatorioDetalhado">
+                        <tr><td colspan="4" style="text-align:center; padding: 15px; color: #666;">Selecione uma pessoa para ver os detalhes</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
     </main>
 
     <div id="modalViagem" class="modal hidden">
