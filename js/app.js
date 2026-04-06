@@ -8,9 +8,19 @@ const appState = {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const conf = await window.configDB.obter();
-        if(conf) appState.config = conf;
-        appState.filtroMes = appState.config.mes_atual;
-        appState.filtroAno = appState.config.ano_atual;
+        
+        // CORREÇÃO 1: Mescla segura das configurações para não perder valores padrão
+        if (conf) {
+            const dadosConf = Array.isArray(conf) ? conf[0] : conf;
+            if (dadosConf) {
+                appState.config = { ...appState.config, ...dadosConf };
+            }
+        }
+        
+        // Garante que o filtro nunca fique "undefined"
+        appState.filtroMes = appState.config.mes_atual || new Date().getMonth() + 1;
+        appState.filtroAno = appState.config.ano_atual || new Date().getFullYear();
+        
         configurarInterface();
         await carregarDados();
     } catch(e) { console.error("Erro ao iniciar:", e); }
@@ -19,6 +29,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 function dataHojeBrasil() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 }
+
+// CORREÇÃO 2: Formatação de Moeda à prova de falhas (evita R$ NaN)
+const fmtMoeda = (v) => {
+    const val = parseFloat(v);
+    if (isNaN(val)) return 'R$ 0,00';
+    return val.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+};
+
+const mostrarLoading = (s) => { 
+    const el = document.getElementById('loadingOverlay'); 
+    if(el) el.classList.toggle('hidden', !s); 
+};
 
 async function carregarDados() {
     mostrarLoading(true);
@@ -30,62 +52,83 @@ async function carregarDados() {
         appState.pessoas = p || [];
         appState.viagens = v || [];
         
-        appState.saldos = s.map(pessoa => {
+        // Garante que o array de saldos não quebre
+        const listaSaldos = s || [];
+        appState.saldos = listaSaldos.map(pessoa => {
             let pag = 0; let rec = 0;
             appState.viagens.forEach(via => {
+                const passageirosSeguros = via.passageiros || [];
                 if (via.motorista_id === pessoa.id) {
-                    rec += via.passageiros.reduce((acc, pass) => acc + parseFloat(pass.valor), 0);
+                    rec += passageirosSeguros.reduce((acc, pass) => acc + parseFloat(pass.valor || 0), 0);
                 }
-                const souPass = via.passageiros.find(pass => pass.pessoa_id === pessoa.id);
-                if (souPass) pag += parseFloat(souPass.valor);
+                const souPass = passageirosSeguros.find(pass => pass.pessoa_id === pessoa.id);
+                if (souPass) pag += parseFloat(souPass.valor || 0);
             });
             return { ...pessoa, a_pagar: pag, a_receber: rec, saldo_liq: rec - pag };
         });
         renderizar();
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error("Erro ao carregar dados:", e); }
     finally { mostrarLoading(false); }
 }
 
 function renderizar() {
     const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    document.getElementById('labelMes').innerText = `${meses[appState.filtroMes-1]}/${appState.filtroAno}`;
+    
+    // Tratativa caso o índice do mês falhe por algum motivo
+    const nomeMes = meses[appState.filtroMes - 1] || 'Mês';
+    document.getElementById('labelMes').innerText = `${nomeMes}/${appState.filtroAno}`;
     document.getElementById('totalViagens').innerText = appState.viagens.length;
 
-    const tbS = document.querySelector('#tabelaPessoas tbody'); tbS.innerHTML = '';
+    const tbS = document.querySelector('#tabelaPessoas tbody'); 
+    if(tbS) tbS.innerHTML = '';
+    
     appState.saldos.filter(x => x.ativo || appState.isAdmin).forEach(s => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${s.nome}</td><td class="text-right text-danger">${fmtMoeda(s.a_pagar)}</td><td class="text-right text-success">${fmtMoeda(s.a_receber)}</td><td class="text-right font-bold ${s.saldo_liq >= 0 ? 'text-success' : 'text-danger'}">${fmtMoeda(s.saldo_liq)}</td>`;
-        tbS.appendChild(tr);
+        tr.innerHTML = `<td>${s.nome}</td>
+                        <td class="text-right text-danger">${fmtMoeda(s.a_pagar)}</td>
+                        <td class="text-right text-success">${fmtMoeda(s.a_receber)}</td>
+                        <td class="text-right font-bold ${s.saldo_liq >= 0 ? 'text-success' : 'text-danger'}">${fmtMoeda(s.saldo_liq)}</td>`;
+        if(tbS) tbS.appendChild(tr);
     });
 
-    const tbV = document.querySelector('#tabelaViagens tbody'); tbV.innerHTML = '';
+    const tbV = document.querySelector('#tabelaViagens tbody'); 
+    if(tbV) tbV.innerHTML = '';
+    
     appState.viagens.forEach(v => {
         const tr = document.createElement('tr');
         const podeEditar = (appState.filtroMes === appState.config.mes_atual && appState.filtroAno === appState.config.ano_atual);
         
-        const partesData = v.data.split('-');
-        const dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
+        // Data segura
+        let dataFormatada = v.data || '';
+        if (dataFormatada.includes('-')) {
+            const partesData = dataFormatada.split('-');
+            dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
+        }
 
-        const nomesPassageiros = v.passageiros.map(p => {
+        // Passageiros seguros
+        const passageirosArray = v.passageiros || [];
+        const nomesPassageiros = passageirosArray.map(p => {
             const pessoa = appState.pessoas.find(pes => pes.id === p.pessoa_id);
             return pessoa ? pessoa.nome : '?';
-        }).join(', ');
+        }).join(', ') || '-';
 
-        // INVERSÃO DA ORDEM AQUI: Motorista primeiro, depois Caronas
+        // CORREÇÃO 3: Calcula o total dinamicamente caso a tabela no BD não tenha a coluna "valor_total"
+        const valorViagem = v.valor_total || passageirosArray.reduce((acc, p) => acc + parseFloat(p.valor || 0), 0);
+
         tr.innerHTML = `
             <td>${dataFormatada}</td>
             <td><strong>${v.motorista?.nome || '?'}</strong></td>
             <td style="font-size: 0.85rem; color: #666; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${nomesPassageiros}</td>
-            <td class="text-right">${fmtMoeda(v.valor_total)}</td>
+            <td class="text-right">${fmtMoeda(valorViagem)}</td>
             <td class="admin-only" style="text-align:center;">
                 ${podeEditar ? `<button class="btn btn-secondary btn-sm" onclick="window.abrirModalViagem(${v.id})">✏️</button>` : ''}
                 <button class="btn btn-danger btn-sm" onclick="excluirViagem(${v.id})">🗑️</button>
             </td>`;
-        tbV.appendChild(tr);
+        if(tbV) tbV.appendChild(tr);
     });
     
     popularSelect();
-    gerarRelatorioMensal(); // Chamando a nova função do relatório
+    gerarRelatorioMensal(); 
     
     document.body.classList.toggle('modo-admin-ativo', appState.isAdmin);
 }
@@ -124,9 +167,13 @@ function configurarInterface() {
     document.getElementById('btnSalvarConfig').onclick = salvarConfig;
     document.getElementById('btnFecharMes').onclick = fecharMes;
     document.getElementById('mesSelecionado').onchange = (e) => {
-        const [m, a] = e.target.value.split('-');
-        appState.filtroMes = parseInt(m); appState.filtroAno = parseInt(a);
-        carregarDados();
+        if(!e.target.value) return;
+        const partes = e.target.value.split('-');
+        if(partes.length === 2) {
+            appState.filtroMes = parseInt(partes[0]); 
+            appState.filtroAno = parseInt(partes[1]);
+            carregarDados();
+        }
     };
 }
 
@@ -146,9 +193,10 @@ window.abrirModalViagem = (id = null) => {
     if(id) {
         const v = appState.viagens.find(x => x.id == id);
         if(v) { 
-            document.getElementById('viagemData').value = v.data; 
+            document.getElementById('viagemData').value = v.data || dataHojeBrasil(); 
             selMot.value = v.motorista_id; 
-            v.passageiros.forEach(p => { const chk = divPass.querySelector(`input[value="${p.pessoa_id}"]`); if(chk) chk.checked = true; }); 
+            const passArray = v.passageiros || [];
+            passArray.forEach(p => { const chk = divPass.querySelector(`input[value="${p.pessoa_id}"]`); if(chk) chk.checked = true; }); 
             selMot.dispatchEvent(new Event('change'));
         }
     } else { 
@@ -198,36 +246,52 @@ async function salvarConfig() {
 
 function popularSelect() {
     const sel = document.getElementById('mesSelecionado');
+    if(!sel) return;
+    
     const v = `${appState.filtroMes}-${appState.filtroAno}`;
     sel.innerHTML = '';
-    let m = appState.config.mes_atual; let a = appState.config.ano_atual;
+    
+    let m = appState.config.mes_atual || new Date().getMonth() + 1; 
+    let a = appState.config.ano_atual || new Date().getFullYear();
+    
     while (a > 2026 || (a === 2026 && m >= 2)) {
         sel.add(new Option(`${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`, `${m}-${a}`));
         m--; if (m < 1) { m = 12; a--; }
     }
-    sel.value = v;
+    
+    // Tenta selecionar o valor atual, se existir nas opções
+    const optionExists = Array.from(sel.options).some(opt => opt.value === v);
+    if(optionExists) sel.value = v;
 }
 
 async function fecharMes() {
     if(!confirm("Fechar mês?")) return;
-    let nM = appState.config.mes_atual + 1; let nA = appState.config.ano_atual;
+    let nM = (appState.config.mes_atual || new Date().getMonth() + 1) + 1; 
+    let nA = appState.config.ano_atual || new Date().getFullYear();
     if(nM > 12) { nM = 1; nA++; }
     await window.configDB.atualizar({ mes_atual: nM, ano_atual: nA });
     location.reload();
 }
 
-// --- NOVA FUNÇÃO: RELATÓRIO DO MÊS ---
 function gerarRelatorioMensal() {
-    const viagens = appState.viagens;
+    const viagens = appState.viagens || [];
     
-    // Totais Gerais
-    const totalValor = viagens.reduce((acc, v) => acc + parseFloat(v.valor_total || 0), 0);
+    // Totais Gerais Seguros
+    const totalValor = viagens.reduce((acc, v) => {
+        const passArray = v.passageiros || [];
+        const val = v.valor_total || passArray.reduce((s, p) => s + parseFloat(p.valor || 0), 0);
+        return acc + val;
+    }, 0);
+    
     const totalDias = viagens.length;
     
-    document.getElementById('relTotalValor').innerText = fmtMoeda(totalValor);
-    document.getElementById('relTotalDias').innerText = totalDias;
+    const elValor = document.getElementById('relTotalValor');
+    const elDias = document.getElementById('relTotalDias');
+    if(elValor) elValor.innerText = fmtMoeda(totalValor);
+    if(elDias) elDias.innerText = totalDias;
 
     const tbody = document.getElementById('corpoRelatorioMensal');
+    if(!tbody) return;
 
     if (viagens.length === 0) {
         document.getElementById('relTopMotorista').innerText = '-';
@@ -236,7 +300,6 @@ function gerarRelatorioMensal() {
         return;
     }
 
-    // Calcula estatísticas por pessoa
     const stats = {};
     appState.pessoas.forEach(p => {
         stats[p.id] = { nome: p.nome, dirigiu: 0, caronas: 0 };
@@ -244,7 +307,8 @@ function gerarRelatorioMensal() {
 
     viagens.forEach(v => {
         if(stats[v.motorista_id]) stats[v.motorista_id].dirigiu++;
-        v.passageiros.forEach(p => {
+        const passArray = v.passageiros || [];
+        passArray.forEach(p => {
             if(stats[p.pessoa_id]) stats[p.pessoa_id].caronas++;
         });
     });
@@ -254,7 +318,6 @@ function gerarRelatorioMensal() {
     
     tbody.innerHTML = '';
 
-    // Popula a tabela e descobre os campeões
     Object.values(stats).forEach(s => {
         if (s.dirigiu > topMot.max) topMot = { nome: s.nome, max: s.dirigiu };
         if (s.caronas > topPass.max) topPass = { nome: s.nome, max: s.caronas };
@@ -276,5 +339,3 @@ function gerarRelatorioMensal() {
 
 window.toggleAtivo = async (id, status) => { await window.pessoasDB.atualizar(id, {ativo: !status}); await carregarDados(); document.getElementById('modalAdmin').classList.add('hidden'); };
 window.excluirViagem = async (id) => { if(confirm('Excluir?')) { await window.viagensDB.excluir(id); await carregarDados(); }};
-const fmtMoeda = (v) => parseFloat(v).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-const mostrarLoading = (s) => { const el = document.getElementById('loadingOverlay'); if(el) el.classList.toggle('hidden', !s); };
