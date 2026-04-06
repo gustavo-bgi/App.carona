@@ -16,9 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) { console.error("Erro ao iniciar:", e); }
 });
 
-// --- FUNÇÃO NOVA: GARANTE DATA DO BRASIL ---
 function dataHojeBrasil() {
-    // O formato 'en-CA' retorna sempre YYYY-MM-DD, perfeito para inputs de data
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 }
 
@@ -65,20 +63,19 @@ function renderizar() {
         const tr = document.createElement('tr');
         const podeEditar = (appState.filtroMes === appState.config.mes_atual && appState.filtroAno === appState.config.ano_atual);
         
-        // CORREÇÃO VISUAL DA DATA NA TABELA
-        const partesData = v.data.split('-'); // [2026, 02, 09]
+        const partesData = v.data.split('-');
         const dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
 
-        // BUSCA NOMES DOS PASSAGEIROS PARA A NOVA COLUNA
         const nomesPassageiros = v.passageiros.map(p => {
             const pessoa = appState.pessoas.find(pes => pes.id === p.pessoa_id);
             return pessoa ? pessoa.nome : '?';
         }).join(', ');
 
+        // INVERSÃO DA ORDEM AQUI: Motorista primeiro, depois Caronas
         tr.innerHTML = `
             <td>${dataFormatada}</td>
+            <td><strong>${v.motorista?.nome || '?'}</strong></td>
             <td style="font-size: 0.85rem; color: #666; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${nomesPassageiros}</td>
-            <td>${v.motorista?.nome || '?'}</td>
             <td class="text-right">${fmtMoeda(v.valor_total)}</td>
             <td class="admin-only" style="text-align:center;">
                 ${podeEditar ? `<button class="btn btn-secondary btn-sm" onclick="window.abrirModalViagem(${v.id})">✏️</button>` : ''}
@@ -88,7 +85,7 @@ function renderizar() {
     });
     
     popularSelect();
-    atualizarSelectRelatorio(); // Atualiza a lista do novo relatório detalhado
+    gerarRelatorioMensal(); // Chamando a nova função do relatório
     
     document.body.classList.toggle('modo-admin-ativo', appState.isAdmin);
 }
@@ -96,7 +93,6 @@ function renderizar() {
 function configurarInterface() {
     document.getElementById('btnNovaViagem').onclick = () => window.abrirModalViagem();
     
-    // TRAVA MOTORISTA
     document.getElementById('viagemMotorista').onchange = (e) => {
         const motId = e.target.value;
         document.querySelectorAll('.chk-pass').forEach(chk => {
@@ -116,7 +112,6 @@ function configurarInterface() {
     document.getElementById('btnNovaPessoa').onclick = () => document.getElementById('modalPessoa').classList.remove('hidden');
     document.getElementById('btnSalvarPessoa').onclick = salvarPessoa;
     
-    // BOTÃO ADMIN CORRIGIDO
     document.getElementById('btnAdminPanel').onclick = () => {
         document.getElementById('configValorPadrao').value = appState.config.valor_padrao;
         const lista = document.getElementById('listaUsuariosAdmin'); lista.innerHTML = '';
@@ -154,7 +149,6 @@ window.abrirModalViagem = (id = null) => {
             document.getElementById('viagemData').value = v.data; 
             selMot.value = v.motorista_id; 
             v.passageiros.forEach(p => { const chk = divPass.querySelector(`input[value="${p.pessoa_id}"]`); if(chk) chk.checked = true; }); 
-            // Dispara o evento para travar o motorista na edição
             selMot.dispatchEvent(new Event('change'));
         }
     } else { 
@@ -171,8 +165,6 @@ async function salvarViagem() {
     const checks = document.querySelectorAll('.chk-pass:checked');
     
     if(!data || !motorista_id || checks.length === 0) return alert('Preencha tudo!');
-    
-    // Verificação de Data Duplicada
     if(!id && appState.viagens.some(v => v.data === data)) return alert('Já existe uma viagem neste dia!');
     
     try {
@@ -209,7 +201,6 @@ function popularSelect() {
     const v = `${appState.filtroMes}-${appState.filtroAno}`;
     sel.innerHTML = '';
     let m = appState.config.mes_atual; let a = appState.config.ano_atual;
-    // Lista apenas até Fev/2026
     while (a > 2026 || (a === 2026 && m >= 2)) {
         sel.add(new Option(`${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`, `${m}-${a}`));
         m--; if (m < 1) { m = 12; a--; }
@@ -225,65 +216,62 @@ async function fecharMes() {
     location.reload();
 }
 
-// --- FUNÇÕES DO NOVO RELATÓRIO DETALHADO ---
-function atualizarSelectRelatorio() {
-    const select = document.getElementById('selectPessoaRelatorio');
-    const valorAtual = select.value;
+// --- NOVA FUNÇÃO: RELATÓRIO DO MÊS ---
+function gerarRelatorioMensal() {
+    const viagens = appState.viagens;
     
-    select.innerHTML = '<option value="">Selecione uma pessoa...</option>';
+    // Totais Gerais
+    const totalValor = viagens.reduce((acc, v) => acc + parseFloat(v.valor_total || 0), 0);
+    const totalDias = viagens.length;
+    
+    document.getElementById('relTotalValor').innerText = fmtMoeda(totalValor);
+    document.getElementById('relTotalDias').innerText = totalDias;
+
+    const tbody = document.getElementById('corpoRelatorioMensal');
+
+    if (viagens.length === 0) {
+        document.getElementById('relTopMotorista').innerText = '-';
+        document.getElementById('relTopPassageiro').innerText = '-';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 15px; color: #666;">Nenhuma viagem neste mês.</td></tr>';
+        return;
+    }
+
+    // Calcula estatísticas por pessoa
+    const stats = {};
     appState.pessoas.forEach(p => {
-        select.add(new Option(p.nome, p.id));
+        stats[p.id] = { nome: p.nome, dirigiu: 0, caronas: 0 };
     });
-    
-    if (valorAtual) {
-        select.value = valorAtual;
-        gerarRelatorioDetalhado();
-    }
-}
 
-window.gerarRelatorioDetalhado = function() {
-    const pessoaId = document.getElementById('selectPessoaRelatorio').value;
-    const corpo = document.getElementById('corpoRelatorioDetalhado');
-    
-    if (!pessoaId) {
-        corpo.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 15px; color: #666;">Selecione uma pessoa para ver os detalhes</td></tr>';
-        return;
-    }
-
-    // Filtra as viagens onde a pessoa selecionada era passageira
-    const viagensParticipadas = appState.viagens.filter(v => 
-        v.passageiros.some(p => p.pessoa_id == pessoaId)
-    );
-
-    corpo.innerHTML = '';
-
-    if (viagensParticipadas.length === 0) {
-        corpo.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 15px; color: #666;">Nenhuma carona para esta pessoa neste mês.</td></tr>';
-        return;
-    }
-
-    viagensParticipadas.forEach(v => {
-        const partesData = v.data.split('-');
-        const dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
-        
-        const infoPassageiro = v.passageiros.find(p => p.pessoa_id == pessoaId);
-        
-        const outrosCaronas = v.passageiros
-            .filter(p => p.pessoa_id != pessoaId)
-            .map(p => {
-                const pessoa = appState.pessoas.find(pes => pes.id === p.pessoa_id);
-                return pessoa ? pessoa.nome : '?';
-            }).join(', ') || '-';
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${dataFormatada}</td>
-            <td>${v.motorista?.nome || '?'}</td>
-            <td class="text-right text-danger" style="font-weight: 600;">${fmtMoeda(infoPassageiro.valor)}</td>
-            <td style="font-size: 0.85rem; color: #666; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${outrosCaronas}</td>
-        `;
-        corpo.appendChild(tr);
+    viagens.forEach(v => {
+        if(stats[v.motorista_id]) stats[v.motorista_id].dirigiu++;
+        v.passageiros.forEach(p => {
+            if(stats[p.pessoa_id]) stats[p.pessoa_id].caronas++;
+        });
     });
+
+    let topMot = { nome: '-', max: 0 };
+    let topPass = { nome: '-', max: 0 };
+    
+    tbody.innerHTML = '';
+
+    // Popula a tabela e descobre os campeões
+    Object.values(stats).forEach(s => {
+        if (s.dirigiu > topMot.max) topMot = { nome: s.nome, max: s.dirigiu };
+        if (s.caronas > topPass.max) topPass = { nome: s.nome, max: s.caronas };
+        
+        if (s.dirigiu > 0 || s.caronas > 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${s.nome}</strong></td>
+                <td class="text-center">${s.dirigiu}x</td>
+                <td class="text-center">${s.caronas}x</td>
+            `;
+            tbody.appendChild(tr);
+        }
+    });
+
+    document.getElementById('relTopMotorista').innerText = topMot.max > 0 ? topMot.nome : '-';
+    document.getElementById('relTopPassageiro').innerText = topPass.max > 0 ? topPass.nome : '-';
 }
 
 window.toggleAtivo = async (id, status) => { await window.pessoasDB.atualizar(id, {ativo: !status}); await carregarDados(); document.getElementById('modalAdmin').classList.add('hidden'); };
