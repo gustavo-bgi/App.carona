@@ -65,12 +65,19 @@ function renderizar() {
         const tr = document.createElement('tr');
         const podeEditar = (appState.filtroMes === appState.config.mes_atual && appState.filtroAno === appState.config.ano_atual);
         
-        // CORREÇÃO VISUAL DA DATA NA TABELA (Para não mostrar dia anterior)
+        // CORREÇÃO VISUAL DA DATA NA TABELA
         const partesData = v.data.split('-'); // [2026, 02, 09]
         const dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
 
+        // BUSCA NOMES DOS PASSAGEIROS PARA A NOVA COLUNA
+        const nomesPassageiros = v.passageiros.map(p => {
+            const pessoa = appState.pessoas.find(pes => pes.id === p.pessoa_id);
+            return pessoa ? pessoa.nome : '?';
+        }).join(', ');
+
         tr.innerHTML = `
             <td>${dataFormatada}</td>
+            <td style="font-size: 0.85rem; color: #666; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${nomesPassageiros}</td>
             <td>${v.motorista?.nome || '?'}</td>
             <td class="text-right">${fmtMoeda(v.valor_total)}</td>
             <td class="admin-only" style="text-align:center;">
@@ -79,7 +86,10 @@ function renderizar() {
             </td>`;
         tbV.appendChild(tr);
     });
+    
     popularSelect();
+    atualizarSelectRelatorio(); // Atualiza a lista do novo relatório detalhado
+    
     document.body.classList.toggle('modo-admin-ativo', appState.isAdmin);
 }
 
@@ -148,7 +158,6 @@ window.abrirModalViagem = (id = null) => {
             selMot.dispatchEvent(new Event('change'));
         }
     } else { 
-        // AQUI ESTÁ A CORREÇÃO DA DATA:
         document.getElementById('viagemData').value = dataHojeBrasil(); 
     }
     document.getElementById('modalViagem').classList.remove('hidden');
@@ -214,6 +223,67 @@ async function fecharMes() {
     if(nM > 12) { nM = 1; nA++; }
     await window.configDB.atualizar({ mes_atual: nM, ano_atual: nA });
     location.reload();
+}
+
+// --- FUNÇÕES DO NOVO RELATÓRIO DETALHADO ---
+function atualizarSelectRelatorio() {
+    const select = document.getElementById('selectPessoaRelatorio');
+    const valorAtual = select.value;
+    
+    select.innerHTML = '<option value="">Selecione uma pessoa...</option>';
+    appState.pessoas.forEach(p => {
+        select.add(new Option(p.nome, p.id));
+    });
+    
+    if (valorAtual) {
+        select.value = valorAtual;
+        gerarRelatorioDetalhado();
+    }
+}
+
+window.gerarRelatorioDetalhado = function() {
+    const pessoaId = document.getElementById('selectPessoaRelatorio').value;
+    const corpo = document.getElementById('corpoRelatorioDetalhado');
+    
+    if (!pessoaId) {
+        corpo.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 15px; color: #666;">Selecione uma pessoa para ver os detalhes</td></tr>';
+        return;
+    }
+
+    // Filtra as viagens onde a pessoa selecionada era passageira
+    const viagensParticipadas = appState.viagens.filter(v => 
+        v.passageiros.some(p => p.pessoa_id == pessoaId)
+    );
+
+    corpo.innerHTML = '';
+
+    if (viagensParticipadas.length === 0) {
+        corpo.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 15px; color: #666;">Nenhuma carona para esta pessoa neste mês.</td></tr>';
+        return;
+    }
+
+    viagensParticipadas.forEach(v => {
+        const partesData = v.data.split('-');
+        const dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
+        
+        const infoPassageiro = v.passageiros.find(p => p.pessoa_id == pessoaId);
+        
+        const outrosCaronas = v.passageiros
+            .filter(p => p.pessoa_id != pessoaId)
+            .map(p => {
+                const pessoa = appState.pessoas.find(pes => pes.id === p.pessoa_id);
+                return pessoa ? pessoa.nome : '?';
+            }).join(', ') || '-';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${dataFormatada}</td>
+            <td>${v.motorista?.nome || '?'}</td>
+            <td class="text-right text-danger" style="font-weight: 600;">${fmtMoeda(infoPassageiro.valor)}</td>
+            <td style="font-size: 0.85rem; color: #666; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${outrosCaronas}</td>
+        `;
+        corpo.appendChild(tr);
+    });
 }
 
 window.toggleAtivo = async (id, status) => { await window.pessoasDB.atualizar(id, {ativo: !status}); await carregarDados(); document.getElementById('modalAdmin').classList.add('hidden'); };
