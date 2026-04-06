@@ -5,21 +5,34 @@ const appState = {
     isAdmin: localStorage.getItem('modoAdmin') === 'true'
 };
 
+// 🛡️ FUNÇÃO DE SEGURANÇA: Garante que um valor é sempre número (evita o R$ NaN)
+const parseNum = (v) => {
+    const n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+};
+
+// 🛡️ FUNÇÃO DE SEGURANÇA: Garante formatação correta do dinheiro
+const fmtMoeda = (v) => parseNum(v).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const conf = await window.configDB.obter();
         
-        // CORREÇÃO 1: Mescla segura das configurações para não perder valores padrão
-        if (conf) {
+        // Mesclagem super segura das configurações
+        if (conf && typeof conf === 'object') {
             const dadosConf = Array.isArray(conf) ? conf[0] : conf;
             if (dadosConf) {
                 appState.config = { ...appState.config, ...dadosConf };
             }
         }
         
-        // Garante que o filtro nunca fique "undefined"
-        appState.filtroMes = appState.config.mes_atual || new Date().getMonth() + 1;
-        appState.filtroAno = appState.config.ano_atual || new Date().getFullYear();
+        // Garante que nunca teremos meses "undefined" ou "NaN"
+        appState.config.mes_atual = parseNum(appState.config.mes_atual) || (new Date().getMonth() + 1);
+        appState.config.ano_atual = parseNum(appState.config.ano_atual) || new Date().getFullYear();
+        appState.config.valor_padrao = parseNum(appState.config.valor_padrao) || 8;
+        
+        appState.filtroMes = appState.config.mes_atual;
+        appState.filtroAno = appState.config.ano_atual;
         
         configurarInterface();
         await carregarDados();
@@ -29,13 +42,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 function dataHojeBrasil() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 }
-
-// CORREÇÃO 2: Formatação de Moeda à prova de falhas (evita R$ NaN)
-const fmtMoeda = (v) => {
-    const val = parseFloat(v);
-    if (isNaN(val)) return 'R$ 0,00';
-    return val.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-};
 
 const mostrarLoading = (s) => { 
     const el = document.getElementById('loadingOverlay'); 
@@ -52,17 +58,16 @@ async function carregarDados() {
         appState.pessoas = p || [];
         appState.viagens = v || [];
         
-        // Garante que o array de saldos não quebre
         const listaSaldos = s || [];
         appState.saldos = listaSaldos.map(pessoa => {
             let pag = 0; let rec = 0;
             appState.viagens.forEach(via => {
                 const passageirosSeguros = via.passageiros || [];
                 if (via.motorista_id === pessoa.id) {
-                    rec += passageirosSeguros.reduce((acc, pass) => acc + parseFloat(pass.valor || 0), 0);
+                    rec += passageirosSeguros.reduce((acc, pass) => acc + parseNum(pass.valor), 0);
                 }
                 const souPass = passageirosSeguros.find(pass => pass.pessoa_id === pessoa.id);
-                if (souPass) pag += parseFloat(souPass.valor || 0);
+                if (souPass) pag += parseNum(souPass.valor);
             });
             return { ...pessoa, a_pagar: pag, a_receber: rec, saldo_liq: rec - pag };
         });
@@ -74,58 +79,66 @@ async function carregarDados() {
 function renderizar() {
     const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     
-    // Tratativa caso o índice do mês falhe por algum motivo
-    const nomeMes = meses[appState.filtroMes - 1] || 'Mês';
-    document.getElementById('labelMes').innerText = `${nomeMes}/${appState.filtroAno}`;
-    document.getElementById('totalViagens').innerText = appState.viagens.length;
+    // Tratativa segura do rótulo do mês
+    const indexMes = parseNum(appState.filtroMes) - 1;
+    const nomeMes = meses[indexMes] || String(appState.filtroMes).padStart(2, '0');
+    
+    const labelMes = document.getElementById('labelMes');
+    if(labelMes) labelMes.innerText = `${nomeMes}/${appState.filtroAno}`;
+    
+    const totalV = document.getElementById('totalViagens');
+    if(totalV) totalV.innerText = appState.viagens.length;
 
     const tbS = document.querySelector('#tabelaPessoas tbody'); 
-    if(tbS) tbS.innerHTML = '';
-    
-    appState.saldos.filter(x => x.ativo || appState.isAdmin).forEach(s => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${s.nome}</td>
-                        <td class="text-right text-danger">${fmtMoeda(s.a_pagar)}</td>
-                        <td class="text-right text-success">${fmtMoeda(s.a_receber)}</td>
-                        <td class="text-right font-bold ${s.saldo_liq >= 0 ? 'text-success' : 'text-danger'}">${fmtMoeda(s.saldo_liq)}</td>`;
-        if(tbS) tbS.appendChild(tr);
-    });
+    if(tbS) {
+        tbS.innerHTML = '';
+        appState.saldos.filter(x => x.ativo || appState.isAdmin).forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${s.nome}</td>
+                            <td class="text-right text-danger">${fmtMoeda(s.a_pagar)}</td>
+                            <td class="text-right text-success">${fmtMoeda(s.a_receber)}</td>
+                            <td class="text-right font-bold ${s.saldo_liq >= 0 ? 'text-success' : 'text-danger'}">${fmtMoeda(s.saldo_liq)}</td>`;
+            tbS.appendChild(tr);
+        });
+    }
 
     const tbV = document.querySelector('#tabelaViagens tbody'); 
-    if(tbV) tbV.innerHTML = '';
-    
-    appState.viagens.forEach(v => {
-        const tr = document.createElement('tr');
-        const podeEditar = (appState.filtroMes === appState.config.mes_atual && appState.filtroAno === appState.config.ano_atual);
-        
-        // Data segura
-        let dataFormatada = v.data || '';
-        if (dataFormatada.includes('-')) {
-            const partesData = dataFormatada.split('-');
-            dataFormatada = `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
-        }
+    if(tbV) {
+        tbV.innerHTML = '';
+        appState.viagens.forEach(v => {
+            const tr = document.createElement('tr');
+            const podeEditar = (appState.filtroMes === appState.config.mes_atual && appState.filtroAno === appState.config.ano_atual);
+            
+            // Tratamento de Data ultra seguro
+            let dataFormatada = v.data ? String(v.data) : '';
+            if (dataFormatada.includes('-')) {
+                const pd = dataFormatada.split('T')[0].split('-'); // Tira horário se vier ISO
+                dataFormatada = pd.length === 3 ? `${pd[2]}/${pd[1]}/${pd[0]}` : dataFormatada;
+            } else {
+                dataFormatada = '-';
+            }
 
-        // Passageiros seguros
-        const passageirosArray = v.passageiros || [];
-        const nomesPassageiros = passageirosArray.map(p => {
-            const pessoa = appState.pessoas.find(pes => pes.id === p.pessoa_id);
-            return pessoa ? pessoa.nome : '?';
-        }).join(', ') || '-';
+            const passageirosArray = v.passageiros || [];
+            const nomesPassageiros = passageirosArray.map(p => {
+                const pessoa = appState.pessoas.find(pes => pes.id === p.pessoa_id);
+                return pessoa ? pessoa.nome : '?';
+            }).join(', ') || '-';
 
-        // CORREÇÃO 3: Calcula o total dinamicamente caso a tabela no BD não tenha a coluna "valor_total"
-        const valorViagem = v.valor_total || passageirosArray.reduce((acc, p) => acc + parseFloat(p.valor || 0), 0);
+            // Tratamento seguro do valor total
+            const valorViagem = parseNum(v.valor_total) || passageirosArray.reduce((acc, p) => acc + parseNum(p.valor), 0);
 
-        tr.innerHTML = `
-            <td>${dataFormatada}</td>
-            <td><strong>${v.motorista?.nome || '?'}</strong></td>
-            <td style="font-size: 0.85rem; color: #666; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${nomesPassageiros}</td>
-            <td class="text-right">${fmtMoeda(valorViagem)}</td>
-            <td class="admin-only" style="text-align:center;">
-                ${podeEditar ? `<button class="btn btn-secondary btn-sm" onclick="window.abrirModalViagem(${v.id})">✏️</button>` : ''}
-                <button class="btn btn-danger btn-sm" onclick="excluirViagem(${v.id})">🗑️</button>
-            </td>`;
-        if(tbV) tbV.appendChild(tr);
-    });
+            tr.innerHTML = `
+                <td>${dataFormatada}</td>
+                <td><strong>${v.motorista?.nome || '?'}</strong></td>
+                <td style="font-size: 0.85rem; color: #666; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${nomesPassageiros}</td>
+                <td class="text-right">${fmtMoeda(valorViagem)}</td>
+                <td class="admin-only" style="text-align:center;">
+                    ${podeEditar ? `<button class="btn btn-secondary btn-sm" onclick="window.abrirModalViagem(${v.id})">✏️</button>` : ''}
+                    <button class="btn btn-danger btn-sm" onclick="excluirViagem(${v.id})">🗑️</button>
+                </td>`;
+            tbV.appendChild(tr);
+        });
+    }
     
     popularSelect();
     gerarRelatorioMensal(); 
@@ -170,8 +183,8 @@ function configurarInterface() {
         if(!e.target.value) return;
         const partes = e.target.value.split('-');
         if(partes.length === 2) {
-            appState.filtroMes = parseInt(partes[0]); 
-            appState.filtroAno = parseInt(partes[1]);
+            appState.filtroMes = parseNum(partes[0]); 
+            appState.filtroAno = parseNum(partes[1]);
             carregarDados();
         }
     };
@@ -209,7 +222,7 @@ async function salvarViagem() {
     const id = document.getElementById('viagemId').value;
     const data = document.getElementById('viagemData').value;
     const motorista_id = document.getElementById('viagemMotorista').value;
-    const valorUnit = parseFloat(appState.config.valor_padrao);
+    const valorUnit = parseNum(appState.config.valor_padrao);
     const checks = document.querySelectorAll('.chk-pass:checked');
     
     if(!data || !motorista_id || checks.length === 0) return alert('Preencha tudo!');
@@ -236,7 +249,7 @@ async function salvarPessoa() {
 }
 
 async function salvarConfig() {
-    const val = parseFloat(document.getElementById('configValorPadrao').value);
+    const val = parseNum(document.getElementById('configValorPadrao').value);
     if(!val) return;
     await window.configDB.atualizar({ valor_padrao: val });
     appState.config.valor_padrao = val;
@@ -248,26 +261,31 @@ function popularSelect() {
     const sel = document.getElementById('mesSelecionado');
     if(!sel) return;
     
-    const v = `${appState.filtroMes}-${appState.filtroAno}`;
     sel.innerHTML = '';
+    let m = parseNum(appState.config.mes_atual); 
+    let a = parseNum(appState.config.ano_atual);
     
-    let m = appState.config.mes_atual || new Date().getMonth() + 1; 
-    let a = appState.config.ano_atual || new Date().getFullYear();
-    
-    while (a > 2026 || (a === 2026 && m >= 2)) {
-        sel.add(new Option(`${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`, `${m}-${a}`));
+    // Lista histórica segura de alguns meses
+    for(let i = 0; i < 12; i++) {
+        const value = `${m}-${a}`;
+        const texto = `${String(m).padStart(2,'0')}/${a}${ (m === appState.config.mes_atual && a === appState.config.ano_atual) ? ' (Aberto)' : ''}`;
+        sel.add(new Option(texto, value));
         m--; if (m < 1) { m = 12; a--; }
+        if(a < 2026) break; // Trava de segurança do ano base
     }
     
-    // Tenta selecionar o valor atual, se existir nas opções
-    const optionExists = Array.from(sel.options).some(opt => opt.value === v);
-    if(optionExists) sel.value = v;
+    const v = `${appState.filtroMes}-${appState.filtroAno}`;
+    // Se o valor não existir no select (foi apagado), adicionamos para não quebrar
+    if (!Array.from(sel.options).some(opt => opt.value === v)) {
+         sel.add(new Option(`${String(appState.filtroMes).padStart(2,'0')}/${appState.filtroAno}`, v));
+    }
+    sel.value = v;
 }
 
 async function fecharMes() {
     if(!confirm("Fechar mês?")) return;
-    let nM = (appState.config.mes_atual || new Date().getMonth() + 1) + 1; 
-    let nA = appState.config.ano_atual || new Date().getFullYear();
+    let nM = appState.config.mes_atual + 1; 
+    let nA = appState.config.ano_atual;
     if(nM > 12) { nM = 1; nA++; }
     await window.configDB.atualizar({ mes_atual: nM, ano_atual: nA });
     location.reload();
@@ -276,10 +294,9 @@ async function fecharMes() {
 function gerarRelatorioMensal() {
     const viagens = appState.viagens || [];
     
-    // Totais Gerais Seguros
     const totalValor = viagens.reduce((acc, v) => {
         const passArray = v.passageiros || [];
-        const val = v.valor_total || passArray.reduce((s, p) => s + parseFloat(p.valor || 0), 0);
+        const val = parseNum(v.valor_total) || passArray.reduce((s, p) => s + parseNum(p.valor), 0);
         return acc + val;
     }, 0);
     
